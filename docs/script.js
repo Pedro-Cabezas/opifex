@@ -1,6 +1,6 @@
 // Si lo dejás vacío usa mismo origen; en Pages poné la URL de Render
 // —— configuración de API (arriba del archivo)
-const API_BASE = "https://oppi-backend.onrender.com/"; // en local podés dejar "" (cadena vacía)
+const API_BASE = "https://oppi-backend.onrender.com"; // en local podés dejar "" (cadena vacía)
 
 // ────────────────────────────────────────────────────────────────
 // Referencias DOM
@@ -199,4 +199,5 @@ generateBtn?.addEventListener("click",async()=>{
 window.addEventListener("load",()=>{
   push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini y generar uno nuevo automáticamente.",{allowHtml:true});
 });
+
 
