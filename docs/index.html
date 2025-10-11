@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Oppi — Asistente de Impresión 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="style.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- IZQUIERDA: lista de conversaciones -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2>Conversaciones</h2>
+        <button id="new-thread" class="btn sm">+ Nueva</button>
+      </div>
+      <ul id="thread-list" class="thread-list"></ul>
+      <div class="sidebar-actions">
+        <button id="rename-thread" class="btn ghost sm">Renombrar</button>
+        <button id="delete-thread" class="btn danger sm">Eliminar</button>
+      </div>
+    </aside>
+
+    <!-- CENTRO: chat -->
+    <main class="chat-col">
+      <header class="topbar">🤖 Oppi</header>
+      <section id="chat-box" class="chat-box"></section>
+      <form id="chat-form" class="composer">
+        <input id="user-input" placeholder="Contame tu pieza, material, impresora, problema…" autocomplete="off" />
+        <button class="btn">Enviar</button>
+        <button type="button" id="reset-btn" class="btn ghost">Reset</button>
+        <button type="button" id="import-btn" class="btn ghost">Importar .ini (contexto)</button>
+        <input type="file" id="ini-file" accept=".ini" hidden />
+      </form>
+    </main>
+
+    <!-- DERECHA: generador + importador en Prusa -->
+    <aside class="tools">
+      <div class="card">
+        <h3>Generador de archivos .ini</h3>
+        <p>Oppi arma un <em>config bundle</em> según lo charlado en el chat.</p>
+        <button id="generate-ini-btn" class="btn full">Generar .ini con Oppi</button>
+        <p class="hint">Luego podrás descargarlo o abrirlo directo en PrusaSlicer.</p>
+      </div>
+
+      <div class="card">
+        <h3>Importar en Prusa (solo .ini)</h3>
+        <p>Elegí un `.ini` local y lo abrimos en PrusaSlicer con <code>--load</code>.</p>
+        <div class="row">
+          <input type="file" id="open-ini-prusa-file" accept=".ini" />
+          <button id="open-ini-prusa-btn" class="btn">Abrir en Prusa</button>
+        </div>
+        <p class="hint">Más adelante sumamos los STL.</p>
+      </div>
+    </aside>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

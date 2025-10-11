@@ -1,0 +1,75 @@
+:root{
+  --bg:#0e0f12; --surface:#171923; --surface-2:#1f2230; --bubble:#1f2433;
+  --text:#e8eaf2; --muted:#a7b0c0; --brand:#3b82f6; --danger:#ff6b6b; --border:#2a2f42;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui, Inter, Roboto, Arial}
+
+.app{
+  height:100dvh; display:grid; gap:0;
+  grid-template-columns: 280px 1fr 340px;
+}
+
+.sidebar{
+  border-right:1px solid var(--border);
+  background:var(--surface);
+  display:flex; flex-direction:column; padding:12px;
+}
+.sidebar-header{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+.thread-list{list-style:none; margin:0; padding:0; overflow:auto; flex:1; border:1px solid var(--border); border-radius:10px}
+.thread-list li{padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer}
+.thread-list li:hover{background:var(--surface-2)}
+.thread-list li.active{background:#23304a}
+.sidebar-actions{display:flex; gap:8px; margin-top:8px}
+
+.chat-col{display:grid; grid-template-rows:auto 1fr auto}
+.topbar{padding:14px 16px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0}
+.chat-box{
+  padding:16px; overflow:auto; background:var(--surface-2);
+  display:flex; flex-direction:column; gap:10px;
+}
+.msg{max-width:75%; padding:10px 12px; border-radius:12px; background:var(--bubble)}
+.msg.user{align-self:flex-end; background:var(--brand); color:#fff}
+.msg.oppi{align-self:flex-start}
+.composer{display:flex; gap:8px; padding:12px; background:var(--surface); border-top:1px solid var(--border)}
+.composer input{flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:#1b2233; color:var(--text)}
+
+.tools{
+  border-left:1px solid var(--border);
+  background:var(--surface);
+  padding:12px; display:flex; flex-direction:column; gap:12px; overflow:auto;
+}
+.card{background:var(--surface-2); border:1px solid var(--border); border-radius:14px; padding:12px}
+.card h3{margin:6px 0 8px}
+.card .hint{color:var(--muted); font-size:0.9em}
+.row{display:flex; gap:8px; align-items:center}
+
+.btn{
+  background:var(--brand); color:#fff; border:0; border-radius:10px; padding:10px 14px; cursor:pointer
+}
+.btn.full{width:100%}
+.btn.ghost{background:transparent; border:1px solid var(--border); color:var(--text)}
+.btn.danger{background:var(--danger)}
+.btn.sm{padding:6px 10px; font-size:0.9em}
+
+pre{background:#0f1421; padding:8px; border-radius:8px; overflow:auto}
+code{background:#0f1421; padding:2px 4px; border-radius:4px}
+
+@media (max-width: 1100px){
+  .app{grid-template-columns: 240px 1fr}
+  .tools{display:none} /* en pantallas chicas escondemos panel derecho */
+}
+/* que no scrollee el body: solo las columnas internas */
+html, body { height: 100%; }
+body { overflow: hidden; }
+
+/* la grilla ocupa toda la altura */
+.app { height: 100vh; }
+
+/* MUY IMPORTANTE en contenedores flex/grid anidados para que el scroll funcione */
+.chat-col, .sidebar, .tools { min-height: 0; }
+.chat-box { min-height: 0; overflow-y: auto; }   /* solo el chat scrollea */
+.thread-list { min-height: 0; max-height: none; overflow-y: auto; } /* lista de chats scrollea dentro de la barra izquierda */
+.tools { overflow-y: auto; }   /* panel derecho scrollea dentro de su columna */
