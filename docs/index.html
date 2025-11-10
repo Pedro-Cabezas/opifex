@@ -24,7 +24,12 @@
 
     <!-- CENTRO: chat -->
     <main class="chat-col">
-      <header class="topbar">Oppi - Tu asistente en impresion 3D</header>
+      <header class="topbar">
+        <span class="topbar-title">Oppi - Tu asistente en impresion 3D</span>
+        <button type="button" id="mode-toggle" class="btn ghost sm" aria-pressed="false">
+          Modo oscuro
+        </button>
+      </header>
       <section id="chat-box" class="chat-box"></section>
       <form id="chat-form" class="composer">
         <input id="user-input" placeholder="Contame tu pieza, material, impresora, problema…" autocomplete="off" />

@@ -13,11 +13,57 @@ const iniFile = document.getElementById("ini-file");
 const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn  = document.getElementById("open-ini-prusa-btn");
+const modeToggle = document.getElementById("mode-toggle");
 
 // Si el backend está remoto, ocultamos la tarjeta "Abrir en Prusa"
 if (typeof API_BASE === "string" && API_BASE) {
   document.querySelectorAll('#open-ini-prusa-file, #open-ini-prusa-btn')
     .forEach(el => el?.closest('.card')?.remove());
+}
+
+// ────────────────────────────────────────────────────────────────
+// Modo oscuro / claro
+const THEME_KEY = "oppi.theme";
+const rootEl = document.documentElement;
+const prefersDark = typeof window.matchMedia === "function"
+  ? window.matchMedia("(prefers-color-scheme: dark)")
+  : null;
+
+function applyTheme(theme) {
+  const mode = theme === "dark" ? "dark" : "light";
+  rootEl.classList.toggle("dark", mode === "dark");
+  modeToggle?.setAttribute("aria-pressed", String(mode === "dark"));
+  if (modeToggle) {
+    modeToggle.textContent = mode === "dark" ? "Modo claro" : "Modo oscuro";
+    modeToggle.setAttribute(
+      "aria-label",
+      mode === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"
+    );
+  }
+}
+
+const storedTheme = localStorage.getItem(THEME_KEY);
+const initialTheme = storedTheme || (prefersDark?.matches ? "dark" : "light");
+applyTheme(initialTheme);
+
+modeToggle?.addEventListener("click", () => {
+  const nextTheme = rootEl.classList.contains("dark") ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, nextTheme);
+  applyTheme(nextTheme);
+});
+
+if (prefersDark) {
+  const handlePreference = event => {
+    if (!localStorage.getItem(THEME_KEY)) {
+      applyTheme(event.matches ? "dark" : "light");
+    }
+  };
+
+  if (typeof prefersDark.addEventListener === "function") {
+    prefersDark.addEventListener("change", handlePreference);
+  } else if (typeof prefersDark.addListener === "function") {
+    prefersDark.addListener(handlePreference);
+  }
 }
 
 // ────────────────────────────────────────────────────────────────

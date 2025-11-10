@@ -80,12 +80,6 @@ html {
   font-size: var(--font-size);
 }
 
-* {
-  box-sizing: border-box;
-  border-color: var(--border);
-  outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
-}
-
 html,
 body {
   height: 100%;
@@ -100,6 +94,23 @@ body {
   line-height: 1.6;
   font-weight: var(--font-weight-normal);
   overflow: hidden;
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border);
+  outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease,
+    box-shadow 0.4s ease;
 }
 
 h1,
@@ -203,6 +214,28 @@ input { font-size: 1rem; }
   position: sticky;
   top: 0;
   font-weight: var(--font-weight-medium);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbar-title {
+  font-size: 1rem;
+}
+
+.topbar .btn {
+  box-shadow: none;
+  border-color: var(--border);
+}
+
+.topbar .btn:hover {
+  transform: none;
+  box-shadow: 0 8px 16px rgba(3, 2, 19, 0.14);
+}
+
+.dark .topbar .btn:hover {
+  box-shadow: 0 8px 16px rgba(14, 9, 43, 0.24);
 }
 
 .chat-box {
@@ -306,7 +339,8 @@ input { font-size: 1rem; }
   padding: 10px 16px;
   cursor: pointer;
   font-weight: var(--font-weight-medium);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease,
+    color 0.15s ease, border-color 0.15s ease;
   box-shadow: 0 12px 24px rgba(3, 2, 19, 0.18);
 }
 
