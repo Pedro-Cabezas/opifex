@@ -26,8 +26,25 @@
     <main class="chat-col">
       <header class="topbar">
         <span class="topbar-title">Oppi - Tu asistente en impresion 3D</span>
-        <button type="button" id="mode-toggle" class="btn ghost sm" aria-pressed="false">
-          Modo oscuro
+        <button
+          type="button"
+          id="mode-toggle"
+          class="btn ghost sm icon-btn"
+          aria-pressed="false"
+          aria-label="Cambiar a modo oscuro"
+          data-theme="light"
+        >
+          <span class="sr-only">Cambiar tema</span>
+          <svg class="icon icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 4.75a.75.75 0 0 1-.75-.75V2a.75.75 0 1 1 1.5 0v2a.75.75 0 0 1-.75.75Zm0 16.5a.75.75 0 0 1-.75-.75V22a.75.75 0 0 1 1.5 0v-1.5a.75.75 0 0 1-.75-.75ZM4.75 12a.75.75 0 0 1-.75-.75H2a.75.75 0 1 1 0-1.5h2a.75.75 0 0 1 0 1.5h-.25a.75.75 0 0 1-.75.75Zm16.5 0a.75.75 0 0 1-.75-.75H22a.75.75 0 0 1 0-1.5h-2a.75.75 0 0 1 0 1.5h-.25a.75.75 0 0 1-.75.75ZM5.636 5.636a.75.75 0 0 1-1.06-1.06l1.414-1.415a.75.75 0 1 1 1.06 1.06L5.636 5.636Zm12.728 12.728a.75.75 0 0 1-1.06-1.06l1.414-1.415a.75.75 0 0 1 1.06 1.06l-1.414 1.415ZM5.636 18.364l-1.414 1.415a.75.75 0 1 1-1.06-1.06l1.414-1.415a.75.75 0 0 1 1.06 1.06Zm12.728-12.728-1.414 1.415a.75.75 0 0 1-1.06-1.06l1.414-1.415a.75.75 0 0 1 1.06 1.06ZM12 6.5a5.5 5.5 0 1 0 0 11a5.5 5.5 0 0 0 0-11Zm0 9.5a4 4 0 1 1 0-8a4 4 0 0 1 0 8Z"
+            />
+          </svg>
+          <svg class="icon icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M21.25 13.11A9.24 9.24 0 0 1 11.41 21a9.26 9.26 0 0 1-8.49-5.6a.75.75 0 0 1 .8-1.05a7.26 7.26 0 0 0 9.14-9.14a.75.75 0 0 1-1.05-.8a9.24 9.24 0 0 1 11.49 8.6a.75.75 0 0 1-1.1.7Zm-2.5-.49a7.75 7.75 0 0 0-7.37-7.37a8.76 8.76 0 0 1-8.07 8.07a7.76 7.76 0 0 0 7.37 7.37a8.76 8.76 0 0 1 8.07-8.07Z"
+            />
+          </svg>
         </button>
       </header>
       <section id="chat-box" class="chat-box"></section>

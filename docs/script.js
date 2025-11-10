@@ -34,7 +34,7 @@ function applyTheme(theme) {
   rootEl.classList.toggle("dark", mode === "dark");
   modeToggle?.setAttribute("aria-pressed", String(mode === "dark"));
   if (modeToggle) {
-    modeToggle.textContent = mode === "dark" ? "Modo claro" : "Modo oscuro";
+    modeToggle.dataset.theme = mode;
     modeToggle.setAttribute(
       "aria-label",
       mode === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"

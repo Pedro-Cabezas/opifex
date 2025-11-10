@@ -113,6 +113,18 @@ body {
     box-shadow 0.4s ease;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 h1,
 h2,
 h3,
@@ -222,6 +234,54 @@ input { font-size: 1rem; }
 
 .topbar-title {
   font-size: 1rem;
+}
+
+.topbar .icon-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: calc(var(--radius) + 6px);
+  position: relative;
+}
+
+.topbar .icon-btn .icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.topbar .icon-btn .icon-sun,
+.topbar .icon-btn .icon-moon {
+  opacity: 0;
+  transform: scale(0.85) rotate(-10deg);
+}
+
+.topbar .icon-btn[data-theme="light"] .icon-sun {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.topbar .icon-btn[data-theme="light"] .icon-moon {
+  opacity: 0;
+}
+
+.topbar .icon-btn[data-theme="dark"] .icon-moon {
+  opacity: 1;
+  transform: scale(1) rotate(0deg);
+}
+
+.topbar .icon-btn[data-theme="dark"] .icon-sun {
+  opacity: 0;
+  transform: scale(0.85) rotate(10deg);
 }
 
 .topbar .btn {
