@@ -1,48 +1,8 @@
 :root {
   --font-size: 16px;
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
+  --card: oklch(0.18 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.145 0 0);
   --popover-foreground: oklch(0.985 0 0);
@@ -50,22 +10,25 @@
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
+  --muted: oklch(0.215 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.24 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.396 0.141 25.723);
   --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --border: oklch(0.3 0 0);
+  --input: oklch(0.23 0 0);
+  --input-background: oklch(0.23 0 0);
+  --switch-background: oklch(0.269 0 0);
   --font-weight-medium: 500;
   --font-weight-normal: 400;
+  --ring: oklch(0.439 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  --radius: 0.625rem;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
@@ -98,10 +61,6 @@ body {
 }
 
 :root {
-  color-scheme: light;
-}
-
-.dark {
   color-scheme: dark;
 }
 
@@ -228,74 +187,11 @@ input { font-size: 1rem; }
   font-weight: var(--font-weight-medium);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  justify-content: flex-start;
 }
 
 .topbar-title {
   font-size: 1rem;
-}
-
-.topbar .icon-btn {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px;
-  width: 40px;
-  height: 40px;
-  border-radius: calc(var(--radius) + 6px);
-  position: relative;
-}
-
-.topbar .icon-btn .icon {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.topbar .icon-btn .icon-sun,
-.topbar .icon-btn .icon-moon {
-  opacity: 0;
-  transform: scale(0.85) rotate(-10deg);
-}
-
-.topbar .icon-btn[data-theme="light"] .icon-sun {
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-}
-
-.topbar .icon-btn[data-theme="light"] .icon-moon {
-  opacity: 0;
-}
-
-.topbar .icon-btn[data-theme="dark"] .icon-moon {
-  opacity: 1;
-  transform: scale(1) rotate(0deg);
-}
-
-.topbar .icon-btn[data-theme="dark"] .icon-sun {
-  opacity: 0;
-  transform: scale(0.85) rotate(10deg);
-}
-
-.topbar .btn {
-  box-shadow: none;
-  border-color: var(--border);
-}
-
-.topbar .btn:hover {
-  transform: none;
-  box-shadow: 0 8px 16px rgba(3, 2, 19, 0.14);
-}
-
-.dark .topbar .btn:hover {
-  box-shadow: 0 8px 16px rgba(14, 9, 43, 0.24);
 }
 
 .chat-box {
