@@ -13,6 +13,8 @@ const iniFile = document.getElementById("ini-file");
 const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn  = document.getElementById("open-ini-prusa-btn");
+// 🔹 NUEVO: botón para sugerir STL
+const suggestStlBtn = document.getElementById("suggest-stl-btn");
 
 // Si el backend está remoto, ocultamos la tarjeta "Abrir en Prusa"
 if (typeof API_BASE === "string" && API_BASE) {
@@ -194,10 +196,57 @@ generateBtn?.addEventListener("click",async()=>{
 });
 
 // ────────────────────────────────────────────────────────────────
+// 🔹 Sugerir modelo STL con Oppi
+suggestStlBtn?.addEventListener("click", async () => {
+  // Tomamos lo que el usuario escribió como descripción del modelo
+  const text = input.value.trim();
+  const prompt = text || "modelo simple de prueba para calibrar la impresora";
+
+  // Mostramos que el usuario pidió un STL
+  push("user", `(Buscar STL) ${prompt}`);
+  setTyping(true);
+
+  try {
+    const r = await fetch(`${API_BASE}/api/stl/suggest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
+
+    const data = await r.json();
+    setTyping(false);
+
+    if (!data.found || !data.model) {
+      return push(
+        "oppi",
+        "Por ahora no encontré un modelo STL que se ajuste a lo que pediste. Probá describirlo con otras palabras 😊"
+      );
+    }
+
+    const m = data.model;
+    const html = `
+      Te recomiendo este modelo STL:<br>
+      <strong>${m.nombre}</strong><br>
+      ${m.descripcion}<br>
+      <em>Categoría:</em> ${m.categoria} – <em>Dificultad:</em> ${m.dificultad}<br>
+      <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">⬇️ Descargar STL</a>
+    `;
+    push("oppi", html, { allowHtml: true });
+
+  } catch (err) {
+    console.error("Error al sugerir STL:", err);
+    setTyping(false);
+    push("oppi", "Tuvimos un problema al buscar el STL. Probá de nuevo.");
+  }
+});
+
+// ────────────────────────────────────────────────────────────────
 // Saludo inicial
 window.addEventListener("load",()=>{
-  push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini y generar uno nuevo automáticamente.",{allowHtml:true});
+  push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",{allowHtml:true});
 });
+
+
 
 
 
