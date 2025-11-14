@@ -126,17 +126,33 @@ form.addEventListener("submit",async e=>{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({message:text,threadId})
     });
-    const data=await r.json();
+
+    let data;
+    try {
+      data = await r.json();
+    } catch (e) {
+      setTyping(false);
+      return push("oppi","El backend no devolvió JSON válido.");
+    }
+
     setTyping(false);
+
+    if (!r.ok) {
+      const msgError = data?.error || `Error del servidor (${r.status})`;
+      return push("oppi",`No pude responder: ${msgError}`);
+    }
+
     const reply=data.reply||"Hubo un problema al responder.";
     const msgEl=push("oppi",toSimpleHtml(reply),{allowHtml:true});
     const ini=extractIniBlock(reply);
     if(ini)attachIniActions(msgEl,ini);
-  }catch{
+  }catch(err){
+    console.error("Error en chat-oppi:", err);
     setTyping(false);
     push("oppi","Error de red. Probá de nuevo.");
   }
 });
+
 
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
@@ -184,16 +200,31 @@ generateBtn?.addEventListener("click",async()=>{
       method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({threadId})
     });
-    const data=await r.json();
+
+    let data;
+    try {
+      data = await r.json();
+    } catch (e) {
+      setTyping(false);
+      return push("oppi","El backend no devolvió JSON válido al generar el .ini.");
+    }
+
     setTyping(false);
-    if(!data.ok)return push("oppi",`No pude generar: ${data.error}`);
+
+    if (!r.ok || !data.ok) {
+      const msgError = data?.error || `Error del servidor (${r.status})`;
+      return push("oppi",`No pude generar el .ini: ${msgError}`);
+    }
+
     const msgEl=push("oppi","Perfil generado automáticamente ✅");
     attachIniActions(msgEl,data.iniText);
-  }catch{
+  }catch(err){
+    console.error("Error generando ini:", err);
     setTyping(false);
     push("oppi","Error de red generando el .ini.");
   }
 });
+
 
 // ────────────────────────────────────────────────────────────────
 // 🔹 Sugerir modelo STL con Oppi
@@ -245,6 +276,7 @@ suggestStlBtn?.addEventListener("click", async () => {
 window.addEventListener("load",()=>{
   push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",{allowHtml:true});
 });
+
 
 
 
