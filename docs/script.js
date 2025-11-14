@@ -199,4 +199,28 @@ window.addEventListener("load",()=>{
   push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini y generar uno nuevo automáticamente.",{allowHtml:true});
 });
 
+  // Cargar la biblioteca desde el JSON
+  fetch("data/stl-library.json")
+    .then(response => response.json())
+    .then(models => {
+      const grid = document.getElementById("stl-grid");
+
+      grid.innerHTML = models.map(m => `
+        <article class="stl-card">
+          <h3>${m.nombre}</h3>
+          <p>${m.descripcion}</p>
+          <p><strong>Categoría:</strong> ${m.categoria}</p>
+          <p><strong>Dificultad:</strong> ${m.dificultad}</p>
+          <button onclick="window.location.href='${m.archivo}'">
+            Descargar STL
+          </button>
+        </article>
+      `).join("");
+    })
+    .catch(err => {
+      console.error("Error cargando la biblioteca STL:", err);
+    });
+
+
+
 
