@@ -57,37 +57,12 @@
         <p class="hint">Más adelante sumamos los STL.</p>
       </div>
 
-      <section id="biblioteca-stl">
-        <h2>Biblioteca de modelos STL</h2>
-        <div id="stl-grid"></div>
-    </section>
-      <script>
-document.addEventListener("DOMContentLoaded", () => {
-  fetch("./data/stl-library.json")
-    .then(response => {
-      console.log("Respuesta fetch JSON:", response.status);
-      return response.json();
-    })
-    .then(models => {
-      const grid = document.getElementById("stl-grid");
+      <div class="chat-input-row">
+  <input id="user-input" type="text" placeholder="Escribí tu duda o lo que querés imprimir..." />
+  <button id="btn-send">Enviar</button>
+  <button id="btn-sugerir-stl">Sugerir STL</button>
+</div>
 
-      grid.innerHTML = models.map(m => `
-        <article class="stl-card">
-          <h3>${m.nombre}</h3>
-          <p>${m.descripcion}</p>
-          <p><strong>Categoría:</strong> ${m.categoria}</p>
-          <p><strong>Dificultad:</strong> ${m.dificultad}</p>
-          <button onclick="window.location.href='${m.archivo}'">
-            Descargar STL
-          </button>
-        </article>
-      `).join("");
-    })
-    .catch(err => {
-      console.error("Error cargando la biblioteca STL:", err);
-    });
-});
-</script>
 
     </aside>
 
@@ -95,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <script src="script.js"></script>
 </body>
 </html>
+
 
 
 
