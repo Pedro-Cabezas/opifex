@@ -227,55 +227,57 @@ generateBtn?.addEventListener("click",async()=>{
 
 
 // ────────────────────────────────────────────────────────────────
-// 🔹 Sugerir modelo STL con Oppi
+// 🔹 Sugerir modelo STL con Oppi (IA + historial de chat)
 suggestStlBtn?.addEventListener("click", async () => {
-  // Tomamos lo que el usuario escribió como descripción del modelo
-  const text = input.value.trim();
-  const prompt = text || "modelo simple de prueba para calibrar la impresora";
-
-  // Mostramos que el usuario pidió un STL
-  push("user", `(Buscar STL) ${prompt}`);
+  // Mostramos una acción similar a la de generar .ini
+  push("user", "(Pedir modelo STL a Oppi)");
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/api/stl/suggest`, {
+    const r = await fetch(`${API_BASE}/api/stl/suggest-ai`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
+      body: JSON.stringify({ threadId })
     });
 
     const data = await r.json();
     setTyping(false);
 
-    if (!data.found || !data.model) {
+    if (!data.ok || !data.model) {
       return push(
         "oppi",
-        "Por ahora no encontré un modelo STL que se ajuste a lo que pediste. Probá describirlo con otras palabras 😊"
+        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir 😊"
       );
     }
 
     const m = data.model;
+    const motivo = data.motivo;
+
     const html = `
-      Te recomiendo este modelo STL:<br>
+      Te recomiendo este modelo STL basado en lo que estuvimos hablando:<br>
       <strong>${m.nombre}</strong><br>
-      ${m.descripcion}<br>
-      <em>Categoría:</em> ${m.categoria} – <em>Dificultad:</em> ${m.dificultad}<br>
+      ${m.descripcion || ""}<br>
+      <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${m.dificultad || "-"}<br>
+      ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
       <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">⬇️ Descargar STL</a>
     `;
+
     push("oppi", html, { allowHtml: true });
 
   } catch (err) {
-    console.error("Error al sugerir STL:", err);
+    console.error("Error al sugerir STL con IA:", err);
     setTyping(false);
     push("oppi", "Tuvimos un problema al buscar el STL. Probá de nuevo.");
   }
 });
+
 
 // ────────────────────────────────────────────────────────────────
 // Saludo inicial
 window.addEventListener("load",()=>{
   push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",{allowHtml:true});
 });
+
 
 
 
