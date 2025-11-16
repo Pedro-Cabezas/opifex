@@ -66,6 +66,11 @@ const iniFile = document.getElementById("ini-file");
 const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn = document.getElementById("open-ini-prusa-btn");
+
+// Sidebar de conversaciones
+const threadList = document.getElementById("thread-list");
+const newThreadBtn = document.getElementById("new-thread-btn");
+
 // Botón para abrir el modal y elementos del modal
 const authOpenBtn = document.getElementById("auth-open-btn");
 const authModal = document.getElementById("auth-modal");
@@ -230,7 +235,7 @@ if (loginBtn) {
     } else {
       loginStatus.textContent = "Sesión iniciada.";
       console.log("SignIn:", data);
-      // Podés cerrar el modal al iniciar sesión
+      // Cerrar el modal al iniciar sesión
       closeAuthModal();
     }
   });
@@ -298,6 +303,83 @@ function ensureFirstThread() {
   }
 }
 ensureFirstThread();
+
+// ────────────────────────────────────────────────────────────────
+// Sidebar de conversaciones (UI)
+
+function clearChatUI() {
+  if (box) box.innerHTML = "";
+}
+
+// Renderizar lista de conversaciones
+function renderThreads() {
+  if (!threadList) return;
+
+  threadList.innerHTML = "";
+
+  const entries = Object.entries(threads).sort(
+    (a, b) => a[1].created - b[1].created
+  );
+
+  if (!entries.length) return;
+
+  for (const [id, t] of entries) {
+    const btn = document.createElement("button");
+    btn.className = "thread-item" + (id === threadId ? " active" : "");
+    btn.textContent = t.name || "Chat sin título";
+
+    btn.addEventListener("click", () => {
+      switchThread(id);
+    });
+
+    threadList.appendChild(btn);
+  }
+}
+
+// Cambiar de conversación
+function switchThread(id) {
+  if (!threads[id]) return;
+  if (id === threadId) return;
+
+  threadId = id;
+  localStorage.setItem(CURRENT_KEY, id);
+
+  clearChatUI();
+  push(
+    "oppi",
+    `Estás en: ${threads[id].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
+  );
+
+  renderThreads();
+}
+
+// Crear un nuevo chat
+function createNewThread() {
+  if (!ensureLoggedIn()) return;
+
+  const id = uuid();
+  const count = Object.keys(threads).length + 1;
+
+  threads[id] = {
+    name: `Conversación ${count}`,
+    created: Date.now(),
+  };
+
+  saveThreads(threads);
+  threadId = id;
+  localStorage.setItem(CURRENT_KEY, id);
+
+  clearChatUI();
+  push("oppi", "Nuevo chat creado. Contame qué querés imprimir 😊");
+
+  renderThreads();
+}
+
+// Botón "Nuevo chat"
+newThreadBtn?.addEventListener("click", createNewThread);
+
+// Render inicial de threads
+renderThreads();
 
 // ────────────────────────────────────────────────────────────────
 // Render de chat y utilidades
