@@ -683,6 +683,12 @@ code {
   transform: translateY(-1px);
 }
 
+.thread-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 #thread-list {
   display: flex;
   flex-direction: column;
@@ -723,4 +729,14 @@ code {
   color: #fdfdfd;
 }
 
+.thread-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
 
+.thread-action:hover {
+  opacity: 1;
+}
