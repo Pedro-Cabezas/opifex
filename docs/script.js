@@ -411,7 +411,7 @@ function renderThreads() {
     const deleteAction = document.createElement("button");
     deleteAction.type = "button";
     deleteAction.className = "thread-menu-btn-action danger";
-    deleteAction.textContent = "Borrar conversación";
+    deleteAction.textContent = "Eliminar";
     deleteAction.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -883,3 +883,4 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
+
