@@ -351,7 +351,13 @@ function renderHistoryForThread(id) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones (UI + rename/delete)
+// Sidebar de conversaciones (UI + menú de tres puntos)
+
+function closeAllThreadMenus() {
+  document
+    .querySelectorAll(".thread-menu-wrapper.open")
+    .forEach((el) => el.classList.remove("open"));
+}
 
 function renderThreads() {
   if (!threadList) return;
@@ -366,38 +372,67 @@ function renderThreads() {
 
   for (const [id, t] of entries) {
     const row = document.createElement("div");
-    row.className = "thread-row";
+    row.className = "thread-row" + (id === threadId ? " active" : "");
 
+    // Botón principal del chat
     const btn = document.createElement("button");
-    btn.className = "thread-item" + (id === threadId ? " active" : "");
+    btn.className = "thread-item";
     btn.textContent = t.name || "Chat sin título";
     btn.addEventListener("click", () => {
       switchThread(id);
     });
 
-    const renameBtn = document.createElement("button");
-    renameBtn.className = "thread-action thread-rename";
-    renameBtn.type = "button";
-    renameBtn.textContent = "✏️";
-    renameBtn.title = "Renombrar conversación";
-    renameBtn.addEventListener("click", (e) => {
+    // Wrapper del menú de tres puntos
+    const menuWrapper = document.createElement("div");
+    menuWrapper.className = "thread-menu-wrapper";
+
+    const menuBtn = document.createElement("button");
+    menuBtn.type = "button";
+    menuBtn.className = "thread-menu-btn";
+    menuBtn.textContent = "⋮";
+
+    // Menú emergente
+    const menu = document.createElement("div");
+    menu.className = "thread-menu";
+
+    const renameAction = document.createElement("button");
+    renameAction.type = "button";
+    renameAction.className = "thread-menu-btn-action";
+    renameAction.textContent = "Renombrar";
+    renameAction.addEventListener("click", (e) => {
       e.stopPropagation();
+      menuWrapper.classList.remove("open");
       renameThread(id);
     });
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.className = "thread-action thread-delete";
-    deleteBtn.type = "button";
-    deleteBtn.textContent = "🗑️";
-    deleteBtn.title = "Borrar conversación";
-    deleteBtn.addEventListener("click", (e) => {
+    const deleteAction = document.createElement("button");
+    deleteAction.type = "button";
+    deleteAction.className = "thread-menu-btn-action danger";
+    deleteAction.textContent = "Borrar conversación";
+    deleteAction.addEventListener("click", (e) => {
       e.stopPropagation();
+      menuWrapper.classList.remove("open");
       deleteThread(id);
     });
 
+    menu.appendChild(renameAction);
+    menu.appendChild(deleteAction);
+
+    menuWrapper.appendChild(menuBtn);
+    menuWrapper.appendChild(menu);
+
+    // Al hacer click en los tres puntos
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const isOpen = menuWrapper.classList.contains("open");
+      closeAllThreadMenus();
+      if (!isOpen) {
+        menuWrapper.classList.add("open");
+      }
+    });
+
     row.appendChild(btn);
-    row.appendChild(renameBtn);
-    row.appendChild(deleteBtn);
+    row.appendChild(menuWrapper);
 
     threadList.appendChild(row);
   }
@@ -521,6 +556,11 @@ async function deleteThread(id) {
 
 // Botón "Nuevo chat"
 newThreadBtn?.addEventListener("click", createNewThread);
+
+// Cerrar menús si clickeás en cualquier otra parte
+document.addEventListener("click", () => {
+  closeAllThreadMenus();
+});
 
 // Render inicial de threads
 renderThreads();
