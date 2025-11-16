@@ -15,7 +15,7 @@ const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 // Lo dejo global por si querés usarlo en otros archivos / consola
 window.supabase = supabase;
 
-// 2) Helper para llamar a tu backend con el token de Supabase
+// Helper para llamar a tu backend con el token de Supabase
 async function callBackend(path, options = {}) {
   const {
     data: { session },
@@ -53,7 +53,10 @@ async function callBackend(path, options = {}) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Referencias DOM (chat + botones Oppi)
+// Estado de sesión / elementos de autenticación
+let currentUser = null;
+
+// Referencias DOM generales (chat + botones Oppi)
 const box = document.getElementById("chat-box");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("user-input");
@@ -68,11 +71,14 @@ const authOpenBtn = document.getElementById("auth-open-btn");
 const authModal = document.getElementById("auth-modal");
 const authCloseBtn = document.getElementById("auth-close-btn");
 
+// UI usuario logueado
+const authUserInfo = document.getElementById("auth-user-info");
+const authUserLabel = document.getElementById("auth-user-label");
+const authLogoutBtn = document.getElementById("auth-logout-btn");
 
-// 🔹 NUEVO: botón para sugerir STL
+// 🔹 Botón para sugerir STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
 
-// ────────────────────────────────────────────────────────────────
 // Referencias DOM para autenticación (Supabase Auth)
 const registerEmail = document.getElementById("register-email");
 const registerPassword = document.getElementById("register-password");
@@ -86,6 +92,9 @@ const loginStatus = document.getElementById("login-status");
 
 const btnVerCuenta = document.getElementById("btn-ver-cuenta");
 const meOutput = document.getElementById("me-output");
+
+// ────────────────────────────────────────────────────────────────
+// Modal de autenticación
 
 function openAuthModal() {
   authModal?.classList.add("open");
@@ -112,6 +121,65 @@ authModal?.addEventListener("click", (e) => {
   }
 });
 
+// ────────────────────────────────────────────────────────────────
+// Manejo de sesión y UI según estado
+
+function updateAuthUI() {
+  if (currentUser) {
+    // Hay sesión
+    authOpenBtn?.classList.add("hidden");
+    authUserInfo?.classList.remove("hidden");
+    if (authUserLabel) authUserLabel.textContent = currentUser.email || "Usuario";
+  } else {
+    // No hay sesión
+    authOpenBtn?.classList.remove("hidden");
+    authUserInfo?.classList.add("hidden");
+    if (authUserLabel) authUserLabel.textContent = "";
+  }
+}
+
+async function initAuthState() {
+  const { data, error } = await supabase.auth.getSession();
+  if (!error) {
+    currentUser = data.session?.user ?? null;
+  } else {
+    console.error("Error obteniendo sesión:", error);
+    currentUser = null;
+  }
+  updateAuthUI();
+}
+
+// Escuchar cambios de sesión (login / logout / registro)
+supabase.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user ?? null;
+  updateAuthUI();
+});
+
+// Cerrar sesión
+authLogoutBtn?.addEventListener("click", async () => {
+  try {
+    await supabase.auth.signOut();
+    currentUser = null;
+    updateAuthUI();
+    push("oppi", "Cerraste sesión. Podés volver a iniciar cuando quieras 🔐");
+  } catch (err) {
+    console.error("Error al cerrar sesión:", err);
+    push("oppi", "No pude cerrar sesión, probá de nuevo.");
+  }
+});
+
+// Helper: asegurar que haya sesión antes de usar funciones
+function ensureLoggedIn() {
+  if (!currentUser) {
+    push(
+      "oppi",
+      "Para usar todas las funciones de Oppi tenés que iniciar sesión 😊"
+    );
+    openAuthModal();
+    return false;
+  }
+  return true;
+}
 
 // ────────────────────────────────────────────────────────────────
 // Registro (signUp)
@@ -162,6 +230,8 @@ if (loginBtn) {
     } else {
       loginStatus.textContent = "Sesión iniciada.";
       console.log("SignIn:", data);
+      // Podés cerrar el modal al iniciar sesión
+      closeAuthModal();
     }
   });
 }
@@ -306,6 +376,8 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 // Enviar mensaje al backend (chat principal)
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
+  if (!ensureLoggedIn()) return;
+
   const text = input.value.trim();
   if (!text) return;
 
@@ -349,6 +421,8 @@ form?.addEventListener("submit", async (e) => {
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
 resetBtn?.addEventListener("click", async () => {
+  if (!ensureLoggedIn()) return;
+
   try {
     await fetch(`${API_BASE}/reset-thread`, {
       method: "POST",
@@ -363,7 +437,10 @@ resetBtn?.addEventListener("click", async () => {
 
 // ────────────────────────────────────────────────────────────────
 // Importar perfil .ini (contexto)
-importBtn?.addEventListener("click", () => iniFile?.click());
+importBtn?.addEventListener("click", () => {
+  if (!ensureLoggedIn()) return;
+  iniFile?.click();
+});
 
 iniFile?.addEventListener("change", async () => {
   const file = iniFile.files?.[0];
@@ -394,6 +471,8 @@ iniFile?.addEventListener("change", async () => {
 // ────────────────────────────────────────────────────────────────
 // Generar .ini automático con Oppi
 generateBtn?.addEventListener("click", async () => {
+  if (!ensureLoggedIn()) return;
+
   push("user", "(Generar .ini con Oppi)");
   setTyping(true);
 
@@ -434,6 +513,8 @@ generateBtn?.addEventListener("click", async () => {
 // ────────────────────────────────────────────────────────────────
 // 🔹 Sugerir modelo STL con Oppi (IA + historial de chat)
 suggestStlBtn?.addEventListener("click", async () => {
+  if (!ensureLoggedIn()) return;
+
   push("user", "(Pedir modelo STL a Oppi)");
   setTyping(true);
 
@@ -481,13 +562,13 @@ suggestStlBtn?.addEventListener("click", async () => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// Saludo inicial
+// Saludo inicial + inicializar estado de sesión
 window.addEventListener("load", () => {
+  initAuthState();
   push(
     "oppi",
     "¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",
     { allowHtml: true }
   );
 });
-
 
