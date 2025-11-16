@@ -83,7 +83,7 @@ const authUserInfo = document.getElementById("auth-user-info");
 const authUserLabel = document.getElementById("auth-user-label");
 const authLogoutBtn = document.getElementById("auth-logout-btn");
 
-// 🔹 Botón para sugerir STL
+// Botón para sugerir STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
 
 // Referencias DOM para autenticación (Supabase Auth)
@@ -133,12 +133,10 @@ authModal?.addEventListener("click", (e) => {
 
 function updateAuthUI() {
   if (currentUser) {
-    // Hay sesión
     authOpenBtn?.classList.add("hidden");
     authUserInfo?.classList.remove("hidden");
     if (authUserLabel) authUserLabel.textContent = currentUser.email || "Usuario";
   } else {
-    // No hay sesión
     authOpenBtn?.classList.remove("hidden");
     authUserInfo?.classList.add("hidden");
     if (authUserLabel) authUserLabel.textContent = "";
@@ -237,7 +235,6 @@ if (loginBtn) {
     } else {
       loginStatus.textContent = "Sesión iniciada.";
       console.log("SignIn:", data);
-      // Cerrar el modal al iniciar sesión
       closeAuthModal();
     }
   });
@@ -270,9 +267,7 @@ if (typeof API_BASE === "string" && API_BASE) {
 // Control de hilos / memoria (threads de conversación)
 const THREADS_KEY = "oppi.threads";
 const CURRENT_KEY = "oppi.currentThread";
-
-// Memoria corta de mensajes por thread (solo últimos 3)
-const HISTORY_KEY = "oppi.threadHistory";
+const HISTORY_KEY = "oppi.threadHistory"; // últimos 3 mensajes
 
 function uuid() {
   return crypto.randomUUID
@@ -332,9 +327,7 @@ function recordMessage(role, text) {
 
   const arr = historyByThread[threadId];
   arr.push({ role, text, ts: Date.now() });
-
-  // Solo guardamos los últimos 3
-  historyByThread[threadId] = arr.slice(-3);
+  historyByThread[threadId] = arr.slice(-3); // últimos 3
   saveHistory(historyByThread);
 }
 
@@ -351,13 +344,96 @@ function renderHistoryForThread(id) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones (UI + menú de tres puntos)
+// Menú global de tres puntos (renombrar / borrar)
 
-function closeAllThreadMenus() {
-  document
-    .querySelectorAll(".thread-menu-wrapper.open")
-    .forEach((el) => el.classList.remove("open"));
+let menuThreadId = null;
+let threadMenu = null;
+
+function ensureThreadMenu() {
+  if (threadMenu) return threadMenu;
+
+  const menu = document.createElement("div");
+  menu.id = "thread-context-menu";
+  menu.className = "thread-context-menu";
+  menu.style.position = "fixed";
+  menu.style.minWidth = "160px";
+  menu.style.background = "rgba(10,10,20,0.98)";
+  menu.style.border = "1px solid rgba(255,255,255,0.05)";
+  menu.style.borderRadius = "8px";
+  menu.style.padding = "4px 0";
+  menu.style.display = "none";
+  menu.style.zIndex = "9999";
+
+  const btnRename = document.createElement("button");
+  btnRename.type = "button";
+  btnRename.textContent = "Renombrar";
+  btnRename.className = "thread-menu-btn-action";
+  btnRename.style.display = "block";
+  btnRename.style.width = "100%";
+  btnRename.style.textAlign = "left";
+  btnRename.style.padding = "6px 12px";
+  btnRename.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = menuThreadId;
+    hideThreadMenu();
+    if (id) renameThread(id);
+  });
+
+  const btnDelete = document.createElement("button");
+  btnDelete.type = "button";
+  btnDelete.textContent = "Eliminar conversación";
+  btnDelete.className = "thread-menu-btn-action danger";
+  btnDelete.style.display = "block";
+  btnDelete.style.width = "100%";
+  btnDelete.style.textAlign = "left";
+  btnDelete.style.padding = "6px 12px";
+  btnDelete.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = menuThreadId;
+    hideThreadMenu();
+    if (id) deleteThread(id);
+  });
+
+  menu.appendChild(btnRename);
+  menu.appendChild(btnDelete);
+
+  // Evitar que el click dentro del menú cierre y dispare cosas debajo
+  menu.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  document.body.appendChild(menu);
+  threadMenu = menu;
+  return menu;
 }
+
+function showThreadMenu(threadId, anchorEl) {
+  const menu = ensureThreadMenu();
+  menuThreadId = threadId;
+
+  const rect = anchorEl.getBoundingClientRect();
+  const menuWidth = 180;
+
+  menu.style.top = rect.bottom + 4 + "px";
+  menu.style.left = rect.right - menuWidth + "px";
+  menu.style.display = "block";
+}
+
+function hideThreadMenu() {
+  if (!threadMenu) return;
+  threadMenu.style.display = "none";
+  menuThreadId = null;
+}
+
+// Cerrar menú al hacer click en cualquier lado
+document.addEventListener("click", () => {
+  hideThreadMenu();
+});
+
+// ────────────────────────────────────────────────────────────────
+// Sidebar de conversaciones (UI)
 
 function renderThreads() {
   if (!threadList) return;
@@ -373,8 +449,11 @@ function renderThreads() {
   for (const [id, t] of entries) {
     const row = document.createElement("div");
     row.className = "thread-row" + (id === threadId ? " active" : "");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.justifyContent = "space-between";
+    row.style.gap = "4px";
 
-    // Botón principal del chat
     const btn = document.createElement("button");
     btn.className = "thread-item";
     btn.textContent = t.name || "Chat sin título";
@@ -384,65 +463,29 @@ function renderThreads() {
       switchThread(id);
     });
 
-    // Wrapper del menú de tres puntos
-    const menuWrapper = document.createElement("div");
-    menuWrapper.className = "thread-menu-wrapper";
-
     const menuBtn = document.createElement("button");
     menuBtn.type = "button";
-    menuBtn.className = "thread-menu-btn";
+    menuBtn.className = "thread-menu-trigger";
     menuBtn.textContent = "⋮";
-
-    // Menú emergente
-    const menu = document.createElement("div");
-    menu.className = "thread-menu";
-
-    const renameAction = document.createElement("button");
-    renameAction.type = "button";
-    renameAction.className = "thread-menu-btn-action";
-    renameAction.textContent = "Renombrar";
-    renameAction.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      menuWrapper.classList.remove("open");
-      renameThread(id);
-    });
-
-    const deleteAction = document.createElement("button");
-    deleteAction.type = "button";
-    deleteAction.className = "thread-menu-btn-action danger";
-    deleteAction.textContent = "Eliminar";
-    deleteAction.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      menuWrapper.classList.remove("open");
-      deleteThread(id);
-    });
-
-    menu.appendChild(renameAction);
-    menu.appendChild(deleteAction);
-
-    menuWrapper.appendChild(menuBtn);
-    menuWrapper.appendChild(menu);
-
-    // Al hacer click en los tres puntos
     menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const isOpen = menuWrapper.classList.contains("open");
-      closeAllThreadMenus();
-      if (!isOpen) {
-        menuWrapper.classList.add("open");
+      const already = menuThreadId === id && threadMenu?.style.display === "block";
+      if (already) {
+        hideThreadMenu();
+      } else {
+        showThreadMenu(id, menuBtn);
       }
     });
 
     row.appendChild(btn);
-    row.appendChild(menuWrapper);
+    row.appendChild(menuBtn);
 
     threadList.appendChild(row);
   }
 }
 
+// Cambiar de conversación
 function switchThread(id) {
   if (!threads[id]) return;
   if (id === threadId) return;
@@ -451,7 +494,6 @@ function switchThread(id) {
   localStorage.setItem(CURRENT_KEY, id);
 
   clearChatUI();
-  // Mostrar historial corto de ese chat
   renderHistoryForThread(id);
   push(
     "oppi",
@@ -461,6 +503,7 @@ function switchThread(id) {
   renderThreads();
 }
 
+// Crear nueva conversación
 function createNewThread() {
   if (!ensureLoggedIn()) return;
 
@@ -524,7 +567,6 @@ async function deleteThread(id) {
     console.error("Error borrando hilo en el backend:", err);
   }
 
-  // Borrar en el frontend
   delete threads[id];
   saveThreads(threads);
 
@@ -563,19 +605,14 @@ newThreadBtn?.addEventListener("click", (e) => {
   createNewThread();
 });
 
-// Cerrar menús si clickeás en cualquier otra parte
-document.addEventListener("click", () => {
-  closeAllThreadMenus();
-});
-
-// ────────────────────────────────────────────────────────────────
 // Render inicial de threads
-
 renderThreads();
 
-// Forzar que la lista de threads tenga scroll (por si falta en CSS)
+// Forzar que la lista de threads tenga scroll (por si el CSS no lo puso)
 if (threadList) {
-  threadList.style.overflowY = "auto";
+  const scrollHost = threadList.parentElement || threadList;
+  scrollHost.style.overflowY = "auto";
+  scrollHost.style.maxHeight = "calc(100vh - 160px)";
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -662,7 +699,6 @@ form?.addEventListener("submit", async (e) => {
   const text = input.value.trim();
   if (!text) return;
 
-  // Mostrar en pantalla y guardar en historial
   push("user", text);
   recordMessage("user", text);
 
@@ -681,7 +717,6 @@ form?.addEventListener("submit", async (e) => {
 
     const reply = data.reply || "Hubo un problema al responder.";
 
-    // Guardar respuesta también en historial (en texto plano)
     recordMessage("oppi", reply);
 
     const msgEl = push("oppi", toSimpleHtml(reply), { allowHtml: true });
@@ -708,7 +743,6 @@ resetBtn?.addEventListener("click", async () => {
 
     push("oppi", "Memoria reiniciada.");
 
-    // Al resetear, también limpiamos el historial corto de ese chat
     historyByThread[threadId] = [];
     saveHistory(historyByThread);
   } catch (err) {
@@ -738,7 +772,7 @@ iniFile?.addEventListener("change", async () => {
   try {
     const data = await callBackend("/import-ini", {
       method: "POST",
-      body: fd, // FormData: callBackend no fuerza Content-Type
+      body: fd,
     });
 
     if (data.ok) {
@@ -805,7 +839,7 @@ generateBtn?.addEventListener("click", async () => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// 🔹 Sugerir modelo STL con Oppi (IA + historial de chat)
+// Sugerir modelo STL con Oppi
 
 suggestStlBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
@@ -856,8 +890,7 @@ suggestStlBtn?.addEventListener("click", async () => {
   } catch (err) {
     console.error("Error al sugerir STL con IA:", err);
     setTyping(false);
-    const msgText =
-      "Tuvimos un problema al buscar el STL. Probá de nuevo.";
+    const msgText = "Tuvimos un problema al buscar el STL. Probá de nuevo.";
     push("oppi", msgText);
     recordMessage("oppi", msgText);
   }
@@ -869,12 +902,13 @@ suggestStlBtn?.addEventListener("click", async () => {
 window.addEventListener("load", () => {
   initAuthState();
 
-  // Asegurar que el contenedor de threads tenga scroll
+  // Forzar scroll en la zona de chats
   if (threadList) {
-    threadList.style.overflowY = "auto";
+    const scrollHost = threadList.parentElement || threadList;
+    scrollHost.style.overflowY = "auto";
+    scrollHost.style.maxHeight = "calc(100vh - 160px)";
   }
 
-  // Mostrar historial corto del thread actual (si existe)
   renderHistoryForThread(threadId);
 
   push(
@@ -883,4 +917,3 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
-
