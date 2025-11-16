@@ -351,7 +351,7 @@ function renderHistoryForThread(id) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones (UI)
+// Sidebar de conversaciones (UI + rename/delete)
 
 function renderThreads() {
   if (!threadList) return;
@@ -365,15 +365,41 @@ function renderThreads() {
   if (!entries.length) return;
 
   for (const [id, t] of entries) {
+    const row = document.createElement("div");
+    row.className = "thread-row";
+
     const btn = document.createElement("button");
     btn.className = "thread-item" + (id === threadId ? " active" : "");
     btn.textContent = t.name || "Chat sin título";
-
     btn.addEventListener("click", () => {
       switchThread(id);
     });
 
-    threadList.appendChild(btn);
+    const renameBtn = document.createElement("button");
+    renameBtn.className = "thread-action thread-rename";
+    renameBtn.type = "button";
+    renameBtn.textContent = "✏️";
+    renameBtn.title = "Renombrar conversación";
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      renameThread(id);
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "thread-action thread-delete";
+    deleteBtn.type = "button";
+    deleteBtn.textContent = "🗑️";
+    deleteBtn.title = "Borrar conversación";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteThread(id);
+    });
+
+    row.appendChild(btn);
+    row.appendChild(renameBtn);
+    row.appendChild(deleteBtn);
+
+    threadList.appendChild(row);
   }
 }
 
@@ -412,6 +438,83 @@ function createNewThread() {
 
   clearChatUI();
   push("oppi", "Nuevo chat creado. Contame qué querés imprimir 😊");
+
+  renderThreads();
+}
+
+// Renombrar hilo (local + backend)
+async function renameThread(id) {
+  if (!threads[id]) return;
+  if (!ensureLoggedIn()) return;
+
+  const currentName = threads[id].name || "Chat sin título";
+  const newName = prompt("Nuevo nombre para la conversación:", currentName);
+  if (!newName) return;
+
+  threads[id].name = newName;
+  saveThreads(threads);
+  renderThreads();
+
+  try {
+    await callBackend("/api/threads/rename", {
+      method: "POST",
+      body: JSON.stringify({ threadId: id, name: newName }),
+    });
+  } catch (err) {
+    console.error("Error renombrando hilo en el backend:", err);
+  }
+}
+
+// Borrar hilo (local + backend)
+async function deleteThread(id) {
+  if (!threads[id]) return;
+  if (!ensureLoggedIn()) return;
+
+  const confirmed = confirm(
+    "¿Seguro que querés borrar esta conversación?\nSe va a eliminar también de la base de datos si existe."
+  );
+  if (!confirmed) return;
+
+  try {
+    await callBackend("/api/threads/delete", {
+      method: "POST",
+      body: JSON.stringify({ threadId: id }),
+    });
+  } catch (err) {
+    console.error("Error borrando hilo en el backend:", err);
+  }
+
+  // Borrar en el frontend
+  delete threads[id];
+  saveThreads(threads);
+
+  delete historyByThread[id];
+  saveHistory(historyByThread);
+
+  if (id === threadId) {
+    const remainingIds = Object.keys(threads);
+    if (remainingIds.length > 0) {
+      threadId = remainingIds[0];
+      localStorage.setItem(CURRENT_KEY, threadId);
+      clearChatUI();
+      renderHistoryForThread(threadId);
+      push(
+        "oppi",
+        `Estás en: ${
+          threads[threadId].name || "Nuevo chat"
+        }. Podés seguir hablando o empezar un tema nuevo.`
+      );
+    } else {
+      threadId = null;
+      ensureFirstThread();
+      clearChatUI();
+      renderHistoryForThread(threadId);
+      push(
+        "oppi",
+        "Nuevo chat creado. Contame qué querés imprimir 😊"
+      );
+    }
+  }
 
   renderThreads();
 }
@@ -514,9 +617,11 @@ form?.addEventListener("submit", async (e) => {
   setTyping(true);
 
   try {
+    const threadName = threads[threadId]?.name || null;
+
     const data = await callBackend("/chat-oppi", {
       method: "POST",
-      body: JSON.stringify({ message: text, threadId }),
+      body: JSON.stringify({ message: text, threadId, threadName }),
     });
 
     setTyping(false);
@@ -711,5 +816,3 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
-
-
