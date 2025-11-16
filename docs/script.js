@@ -1,21 +1,16 @@
 // ────────────────────────────────────────────────────────────────
 // Configuración de API
-// Si lo dejás vacío ("") usa el mismo origen que el frontend.
-// En GitHub Pages, poné acá la URL de tu backend en Render.
 const API_BASE = "https://oppi-backend.onrender.com";
-// const API_BASE = ""; // para usar mismo dominio en desarrollo/local
+// const API_BASE = "";
 
 // ────────────────────────────────────────────────────────────────
-// Supabase (Auth + helper para backend)
+// Supabase (Auth)
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
-// 1) Cliente de Supabase (FRONTEND)
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-
-// Lo dejo global por si querés usarlo en otros archivos / consola
 window.supabase = supabase;
 
-// Helper para llamar a tu backend con el token de Supabase
+// Helper para llamar a backend con token
 async function callBackend(path, options = {}) {
   const {
     data: { session },
@@ -57,7 +52,7 @@ async function callBackend(path, options = {}) {
 // Estado de sesión / elementos de autenticación
 let currentUser = null;
 
-// Referencias DOM generales (chat + botones Oppi)
+// DOM general
 const box = document.getElementById("chat-box");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("user-input");
@@ -68,11 +63,11 @@ const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn = document.getElementById("open-ini-prusa-btn");
 
-// Sidebar de conversaciones
+// Sidebar
 const threadList = document.getElementById("thread-list");
 const newThreadBtn = document.getElementById("new-thread-btn");
 
-// Botón para abrir el modal y elementos del modal
+// Auth modal
 const authOpenBtn = document.getElementById("auth-open-btn");
 const authModal = document.getElementById("auth-modal");
 const authCloseBtn = document.getElementById("auth-close-btn");
@@ -82,10 +77,10 @@ const authUserInfo = document.getElementById("auth-user-info");
 const authUserLabel = document.getElementById("auth-user-label");
 const authLogoutBtn = document.getElementById("auth-logout-btn");
 
-// Botón para sugerir STL
+// STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
 
-// Referencias DOM para autenticación (Supabase Auth)
+// Auth inputs
 const registerEmail = document.getElementById("register-email");
 const registerPassword = document.getElementById("register-password");
 const registerBtn = document.getElementById("register-btn");
@@ -110,25 +105,15 @@ function closeAuthModal() {
   authModal?.classList.remove("open");
 }
 
-// Abrir modal
-authOpenBtn?.addEventListener("click", () => {
-  openAuthModal();
-});
+authOpenBtn?.addEventListener("click", () => openAuthModal());
+authCloseBtn?.addEventListener("click", () => closeAuthModal());
 
-// Cerrar modal con la X
-authCloseBtn?.addEventListener("click", () => {
-  closeAuthModal();
-});
-
-// Cerrar modal haciendo click afuera del cuadro
 authModal?.addEventListener("click", (e) => {
-  if (e.target === authModal) {
-    closeAuthModal();
-  }
+  if (e.target === authModal) closeAuthModal();
 });
 
 // ────────────────────────────────────────────────────────────────
-// Manejo de sesión y UI según estado
+// Manejo de sesión
 
 function updateAuthUI() {
   if (currentUser) {
@@ -142,52 +127,42 @@ function updateAuthUI() {
   }
 }
 
-// Sincronizar hilos desde Supabase para el usuario actual
-async function syncThreadsFromSupabase() {
-  if (!currentUser) return;
+async function syncThreadsFromBackend() {
+  // Opcional: si no existe /api/threads/list, esto fallará y lo ignoramos
+  try {
+    const data = await callBackend("/api/threads/list", {
+      method: "GET",
+    });
 
-  const { data, error } = await supabase
-    .from("oppi_threads")
-    .select("thread_id, name, created_at")
-    .order("created_at", { ascending: true });
+    if (!data || !Array.isArray(data.threads)) return;
 
-  if (error) {
-    console.error("Error cargando hilos desde Supabase:", error);
-    return;
-  }
+    threads = {};
+    for (const t of data.threads) {
+      threads[t.threadId] = {
+        name: t.name || "Chat sin título",
+        created: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
+      };
+    }
+    saveThreads(threads);
 
-  if (!data || data.length === 0) {
-    // Usuario nuevo: se queda con las conversaciones locales (si hubiera)
-    renderThreads();
-    return;
-  }
-
-  threads = {};
-  for (const row of data) {
-    threads[row.thread_id] = {
-      name: row.name || "Chat sin título",
-      created: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
-    };
-  }
-  saveThreads(threads);
-
-  // Si el hilo actual no existe, elegimos el primero
-  if (!threads[threadId]) {
     const ids = Object.keys(threads);
-    if (ids.length > 0) {
+    if (!threads[threadId] && ids.length > 0) {
       threadId = ids[0];
       localStorage.setItem(CURRENT_KEY, threadId);
     }
-  }
 
-  renderThreads();
-  clearChatUI();
-  if (threadId) {
-    renderHistoryForThread(threadId);
-    push(
-      "oppi",
-      `Estás en: ${threads[threadId].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
-    );
+    renderThreads();
+    clearChatUI();
+    if (threadId) {
+      renderHistoryForThread(threadId);
+      push(
+        "oppi",
+        `Estás en: ${threads[threadId].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
+      );
+    }
+  } catch (err) {
+    console.warn("No pude sincronizar hilos desde backend (continuo con local):", err);
+    renderThreads();
   }
 }
 
@@ -200,26 +175,33 @@ async function initAuthState() {
   }
   updateAuthUI();
   if (currentUser) {
-    syncThreadsFromSupabase();
+    await syncThreadsFromBackend();
+  } else {
+    renderThreads();
   }
 }
 
-// Escuchar cambios de sesión (login / logout / registro)
 supabase.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user ?? null;
   updateAuthUI();
 
   if (currentUser) {
-    // Al loguearse: cargar hilos de la cuenta
-    await syncThreadsFromSupabase();
-  } else {
-    // Al desloguearse: limpiar hilos locales para no ver los de otra cuenta
+    // Limpiamos estados locales por si venía otro usuario
     threads = {};
     historyByThread = {};
     localStorage.removeItem(THREADS_KEY);
     localStorage.removeItem(HISTORY_KEY);
     localStorage.removeItem(CURRENT_KEY);
-
+    threadId = null;
+    ensureFirstThread();
+    await syncThreadsFromBackend();
+  } else {
+    // Al desloguearse, limpiamos todo
+    threads = {};
+    historyByThread = {};
+    localStorage.removeItem(THREADS_KEY);
+    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(CURRENT_KEY);
     threadId = null;
     ensureFirstThread();
     clearChatUI();
@@ -231,7 +213,6 @@ supabase.auth.onAuthStateChange(async (_event, session) => {
 authLogoutBtn?.addEventListener("click", async () => {
   try {
     await supabase.auth.signOut();
-    // El listener onAuthStateChange se encarga de limpiar todo
     push("oppi", "Cerraste sesión. Podés volver a iniciar cuando quieras.");
   } catch (err) {
     console.error("Error al cerrar sesión:", err);
@@ -239,7 +220,7 @@ authLogoutBtn?.addEventListener("click", async () => {
   }
 });
 
-// Helper: asegurar que haya sesión antes de usar funciones
+// Helper login obligatorio
 function ensureLoggedIn() {
   if (!currentUser) {
     push(
@@ -252,8 +233,7 @@ function ensureLoggedIn() {
   return true;
 }
 
-// ────────────────────────────────────────────────────────────────
-// Registro (signUp)
+// Registro
 if (registerBtn) {
   registerBtn.addEventListener("click", async () => {
     registerStatus.textContent = "Creando cuenta...";
@@ -267,7 +247,6 @@ if (registerBtn) {
     }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
-
     if (error) {
       registerStatus.textContent = "Error: " + error.message;
     } else {
@@ -278,7 +257,7 @@ if (registerBtn) {
   });
 }
 
-// Login (signInWithPassword)
+// Login
 if (loginBtn) {
   loginBtn.addEventListener("click", async () => {
     loginStatus.textContent = "Iniciando sesión...";
@@ -306,7 +285,7 @@ if (loginBtn) {
   });
 }
 
-// Debug: probar /api/me en tu backend
+// Debug /api/me
 if (btnVerCuenta) {
   btnVerCuenta.addEventListener("click", async () => {
     meOutput.textContent = "Consultando /api/me...";
@@ -321,8 +300,7 @@ if (btnVerCuenta) {
   });
 }
 
-// ────────────────────────────────────────────────────────────────
-// Si el backend está remoto, ocultamos la tarjeta "Abrir en Prusa"
+// Ocultar tarjeta "Abrir en Prusa" si backend remoto
 if (typeof API_BASE === "string" && API_BASE) {
   document
     .querySelectorAll("#open-ini-prusa-file, #open-ini-prusa-btn")
@@ -330,7 +308,8 @@ if (typeof API_BASE === "string" && API_BASE) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Control de hilos / memoria (threads de conversación)
+// Threads en localStorage + historial corto
+
 const THREADS_KEY = "oppi.threads";
 const CURRENT_KEY = "oppi.currentThread";
 const HISTORY_KEY = "oppi.threadHistory";
@@ -382,14 +361,10 @@ function ensureFirstThread() {
 }
 ensureFirstThread();
 
-// ────────────────────────────────────────────────────────────────
-// Memoria corta: registrar y renderizar últimos 3 mensajes
-
+// Historial corto (3 mensajes)
 function recordMessage(role, text) {
   if (!threadId || !text) return;
-  if (!historyByThread[threadId]) {
-    historyByThread[threadId] = [];
-  }
+  if (!historyByThread[threadId]) historyByThread[threadId] = [];
 
   const arr = historyByThread[threadId];
   arr.push({ role, text, ts: Date.now() });
@@ -410,7 +385,7 @@ function renderHistoryForThread(id) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Menú global de tres puntos (renombrar / borrar)
+// Menú de tres puntitos (renombrar / borrar)
 
 let menuThreadId = null;
 let threadMenu = null;
@@ -422,51 +397,48 @@ function ensureThreadMenu() {
   menu.id = "thread-context-menu";
   menu.className = "thread-context-menu";
   menu.style.position = "fixed";
-  menu.style.minWidth = "160px";
+  menu.style.minWidth = "170px";
   menu.style.background = "rgba(10,10,20,0.98)";
-  menu.style.border = "1px solid rgba(255,255,255,0.05)";
-  menu.style.borderRadius = "8px";
+  menu.style.border = "1px solid rgba(255,255,255,0.06)";
+  menu.style.borderRadius = "10px";
   menu.style.padding = "4px 0";
   menu.style.display = "none";
   menu.style.zIndex = "9999";
+  menu.style.backdropFilter = "blur(8px)";
 
-  const btnRename = document.createElement("button");
-  btnRename.type = "button";
-  btnRename.textContent = "Renombrar";
-  btnRename.style.display = "block";
-  btnRename.style.width = "100%";
-  btnRename.style.textAlign = "left";
-  btnRename.style.padding = "6px 12px";
-  btnRename.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const addItem = (label, onClick) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.style.display = "block";
+    b.style.width = "100%";
+    b.style.textAlign = "left";
+    b.style.padding = "8px 14px";
+    b.style.background = "transparent";
+    b.style.border = "none";
+    b.style.cursor = "pointer";
+    b.style.fontSize = "0.9rem";
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    });
+    menu.appendChild(b);
+  };
+
+  addItem("Renombrar", () => {
     const id = menuThreadId;
     hideThreadMenu();
     if (id) renameThread(id);
   });
 
-  const btnDelete = document.createElement("button");
-  btnDelete.type = "button";
-  btnDelete.textContent = "Eliminar conversación";
-  btnDelete.style.display = "block";
-  btnDelete.style.width = "100%";
-  btnDelete.style.textAlign = "left";
-  btnDelete.style.padding = "6px 12px";
-  btnDelete.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  addItem("Eliminar conversación", () => {
     const id = menuThreadId;
     hideThreadMenu();
     if (id) deleteThread(id);
   });
 
-  menu.appendChild(btnRename);
-  menu.appendChild(btnDelete);
-
-  menu.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
+  menu.addEventListener("click", (e) => e.stopPropagation());
   document.body.appendChild(menu);
   threadMenu = menu;
   return menu;
@@ -477,7 +449,7 @@ function showThreadMenu(threadIdParam, anchorEl) {
   menuThreadId = threadIdParam;
 
   const rect = anchorEl.getBoundingClientRect();
-  const menuWidth = 180;
+  const menuWidth = 190;
 
   menu.style.top = rect.bottom + 4 + "px";
   menu.style.left = rect.right - menuWidth + "px";
@@ -490,22 +462,18 @@ function hideThreadMenu() {
   menuThreadId = null;
 }
 
-document.addEventListener("click", () => {
-  hideThreadMenu();
-});
+document.addEventListener("click", () => hideThreadMenu());
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones (UI)
+// Sidebar de conversaciones
 
 function renderThreads() {
   if (!threadList) return;
-
   threadList.innerHTML = "";
 
   const entries = Object.entries(threads).sort(
     (a, b) => a[1].created - b[1].created
   );
-
   if (!entries.length) return;
 
   for (const [id, t] of entries) {
@@ -532,8 +500,8 @@ function renderThreads() {
     menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const already = menuThreadId === id && threadMenu?.style.display === "block";
-      if (already) {
+      const open = menuThreadId === id && threadMenu?.style.display === "block";
+      if (open) {
         hideThreadMenu();
       } else {
         showThreadMenu(id, menuBtn);
@@ -542,12 +510,15 @@ function renderThreads() {
 
     row.appendChild(btn);
     row.appendChild(menuBtn);
-
     threadList.appendChild(row);
   }
+
+  // Aseguramos scroll vertical
+  const scrollHost = threadList.parentElement || threadList;
+  scrollHost.style.overflowY = "auto";
+  scrollHost.style.maxHeight = "calc(100vh - 160px)";
 }
 
-// Cambiar de conversación
 function switchThread(id) {
   if (!threads[id]) return;
   if (id === threadId) return;
@@ -565,19 +536,15 @@ function switchThread(id) {
   renderThreads();
 }
 
-// Crear nueva conversación (local + Supabase)
 async function createNewThread() {
   if (!ensureLoggedIn()) return;
 
   const id = uuid();
   const count = Object.keys(threads).length + 1;
 
-  threads[id] = {
-    name: `Conversación ${count}`,
-    created: Date.now(),
-  };
-
+  threads[id] = { name: `Conversación ${count}`, created: Date.now() };
   saveThreads(threads);
+
   threadId = id;
   localStorage.setItem(CURRENT_KEY, id);
 
@@ -586,19 +553,17 @@ async function createNewThread() {
 
   renderThreads();
 
-  // Guardar en Supabase
+  // Avisar al backend (si tenés endpoint de resumen, lo podés usar acá)
   try {
-    await supabase.from("oppi_threads").insert({
-      user_id: currentUser.id,
-      thread_id: id,
-      name: threads[id].name,
+    await callBackend("/api/threads/rename", {
+      method: "POST",
+      body: JSON.stringify({ threadId: id, name: threads[id].name }),
     });
   } catch (err) {
-    console.error("Error guardando hilo en Supabase:", err);
+    console.warn("No se pudo registrar el nuevo hilo en backend (no crítico):", err);
   }
 }
 
-// Renombrar hilo (local + Supabase)
 async function renameThread(id) {
   if (!threads[id]) return;
   if (!ensureLoggedIn()) return;
@@ -612,48 +577,42 @@ async function renameThread(id) {
   renderThreads();
 
   try {
-    await supabase.from("oppi_threads").upsert({
-      user_id: currentUser.id,
-      thread_id: id,
-      name: newName,
+    await callBackend("/api/threads/rename", {
+      method: "POST",
+      body: JSON.stringify({ threadId: id, name: newName }),
     });
   } catch (err) {
-    console.error("Error renombrando hilo en Supabase:", err);
+    console.error("Error renombrando hilo en backend:", err);
   }
 }
 
-// Borrar hilo (local + Supabase)
 async function deleteThread(id) {
   if (!threads[id]) return;
   if (!ensureLoggedIn()) return;
 
   const confirmed = confirm(
-    "¿Seguro que querés borrar esta conversación? Se va a eliminar también de la base de datos."
+    "¿Seguro que querés borrar esta conversación? También se eliminará de la base de datos si existe."
   );
   if (!confirmed) return;
 
-  // Borrar en Supabase
   try {
-    await supabase
-      .from("oppi_threads")
-      .delete()
-      .eq("user_id", currentUser.id)
-      .eq("thread_id", id);
+    await callBackend("/api/threads/delete", {
+      method: "POST",
+      body: JSON.stringify({ threadId: id }),
+    });
   } catch (err) {
-    console.error("Error borrando hilo en Supabase:", err);
+    console.error("Error borrando hilo en backend:", err);
   }
 
-  // Borrar en el frontend
   delete threads[id];
   saveThreads(threads);
-
   delete historyByThread[id];
   saveHistory(historyByThread);
 
   if (id === threadId) {
-    const remainingIds = Object.keys(threads);
-    if (remainingIds.length > 0) {
-      threadId = remainingIds[0];
+    const remaining = Object.keys(threads);
+    if (remaining.length > 0) {
+      threadId = remaining[0];
       localStorage.setItem(CURRENT_KEY, threadId);
       clearChatUI();
       renderHistoryForThread(threadId);
@@ -675,25 +634,14 @@ async function deleteThread(id) {
   renderThreads();
 }
 
-// Botón "Nuevo chat"
 newThreadBtn?.addEventListener("click", (e) => {
   e.preventDefault();
   e.stopPropagation();
   createNewThread();
 });
 
-// Render inicial de threads
-renderThreads();
-
-// Forzar que la barra de chats tenga scroll
-if (threadList) {
-  const scrollHost = threadList.parentElement || threadList;
-  scrollHost.style.overflowY = "auto";
-  scrollHost.style.maxHeight = "calc(100vh - 160px)";
-}
-
 // ────────────────────────────────────────────────────────────────
-// Render de chat y utilidades
+// Render chat y utilidades
 
 function push(who, text, { allowHtml = false } = {}) {
   const msg = document.createElement("div");
@@ -734,7 +682,6 @@ function extractIniBlock(text) {
   return m ? m[1].trim() : null;
 }
 
-// Agregar botones a los .ini generados
 function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
   const bar = document.createElement("div");
   bar.style.marginTop = "8px";
@@ -767,7 +714,7 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Enviar mensaje al backend (chat principal)
+// Eventos principales
 
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -778,13 +725,11 @@ form?.addEventListener("submit", async (e) => {
 
   push("user", text);
   recordMessage("user", text);
-
   input.value = "";
   setTyping(true);
 
   try {
     const threadName = threads[threadId]?.name || null;
-
     const data = await callBackend("/chat-oppi", {
       method: "POST",
       body: JSON.stringify({ message: text, threadId, threadName }),
@@ -793,7 +738,6 @@ form?.addEventListener("submit", async (e) => {
     setTyping(false);
 
     const reply = data.reply || "Hubo un problema al responder.";
-
     recordMessage("oppi", reply);
 
     const msgEl = push("oppi", toSimpleHtml(reply), { allowHtml: true });
@@ -806,9 +750,6 @@ form?.addEventListener("submit", async (e) => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────
-// Reset de conversación
-
 resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -817,9 +758,7 @@ resetBtn?.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ threadId }),
     });
-
     push("oppi", "Memoria reiniciada.");
-
     historyByThread[threadId] = [];
     saveHistory(historyByThread);
   } catch (err) {
@@ -827,9 +766,6 @@ resetBtn?.addEventListener("click", async () => {
     push("oppi", `Error al reiniciar memoria: ${err.message}`);
   }
 });
-
-// ────────────────────────────────────────────────────────────────
-// Importar perfil .ini (contexto)
 
 importBtn?.addEventListener("click", () => {
   if (!ensureLoggedIn()) return;
@@ -840,8 +776,10 @@ iniFile?.addEventListener("change", async () => {
   const file = iniFile.files?.[0];
   if (!file) return;
 
-  push("user", `Importando perfil: ${file.name} ...`);
-  recordMessage("user", `Importando perfil: ${file.name} ...`);
+  const msgUser = `Importando perfil: ${file.name} ...`;
+  push("user", msgUser);
+  recordMessage("user", msgUser);
+
   const fd = new FormData();
   fd.append("file", file);
   fd.append("threadId", threadId);
@@ -864,7 +802,7 @@ iniFile?.addEventListener("change", async () => {
       recordMessage("oppi", msg);
     }
   } catch (err) {
-    console.error("Error de red importando el .ini:", err);
+    console.error("Error importando .ini:", err);
     const msg = `Error de red importando el .ini: ${err.message}`;
     push("oppi", msg);
     recordMessage("oppi", msg);
@@ -873,16 +811,12 @@ iniFile?.addEventListener("change", async () => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────
-// Generar .ini automático con Oppi
-
 generateBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
   const userMsg = "(Generar .ini con Oppi)";
   push("user", userMsg);
   recordMessage("user", userMsg);
-
   setTyping(true);
 
   try {
@@ -915,16 +849,12 @@ generateBtn?.addEventListener("click", async () => {
   }
 });
 
-// ────────────────────────────────────────────────────────────────
-// Sugerir modelo STL con Oppi
-
 suggestStlBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
   const userMsg = "(Pedir modelo STL a Oppi)";
   push("user", userMsg);
   recordMessage("user", userMsg);
-
   setTyping(true);
 
   try {
@@ -965,7 +895,7 @@ suggestStlBtn?.addEventListener("click", async () => {
     }`;
     recordMessage("oppi", resumenPlano);
   } catch (err) {
-    console.error("Error al sugerir STL con IA:", err);
+    console.error("Error al sugerir STL:", err);
     setTyping(false);
     const msgText = "Tuvimos un problema al buscar el STL. Probá de nuevo.";
     push("oppi", msgText);
@@ -974,7 +904,7 @@ suggestStlBtn?.addEventListener("click", async () => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// Saludo inicial + inicializar estado de sesión
+// Saludo inicial
 
 window.addEventListener("load", () => {
   initAuthState();
