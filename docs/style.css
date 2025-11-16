@@ -140,6 +140,8 @@ input { font-size: 1rem; }
   border-radius: var(--radius);
   background: var(--sidebar-accent);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  max-height: calc(100vh - 150px); /* ajustá según tu header */
+  overflow-y: auto;
 }
 
 .thread-list li {
@@ -695,6 +697,8 @@ code {
 .thread-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  position: relative;
   gap: 4px;
   padding: 4px;
   border-radius: 8px;
@@ -765,7 +769,7 @@ code {
 /* Menú emergente */
 .thread-menu {
   position: absolute;
-  top: 110%;
+  top: 100%;
   right: 0;
   min-width: 140px;
   padding: 4px;
@@ -774,7 +778,7 @@ code {
   box-shadow: 0 12px 24px rgba(0,0,0,0.5);
   border: 1px solid rgba(255,255,255,0.05);
   display: none;
-  z-index: 20;
+  z-index: 5;
 }
 
 /* Cuando el wrapper tiene .open se muestra el menú */
