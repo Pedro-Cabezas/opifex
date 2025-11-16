@@ -8,34 +8,13 @@
 </head>
 <body>
   <div class="app">
-
-<!-- BLOQUE DE AUTENTICACIÓN -->
-<div id="auth-box">
-  <h2>Ingresar a Oppi</h2>
-
-  <div class="auth-section">
-    <h3>Crear cuenta</h3>
-    <input id="register-email" type="email" placeholder="Email" />
-    <input id="register-password" type="password" placeholder="Contraseña" />
-    <button id="register-btn">Registrarse</button>
-    <p id="register-status"></p>
-  </div>
-
-  <div class="auth-section">
-    <h3>Iniciar sesión</h3>
-    <input id="login-email" type="email" placeholder="Email" />
-    <input id="login-password" type="password" placeholder="Contraseña" />
-    <button id="login-btn">Entrar</button>
-    <p id="login-status"></p>
-  </div>
-
-  <button id="btn-ver-cuenta">Ver mis datos (debug)</button>
-  <pre id="me-output"></pre>
-</div>
-
     
     <!-- IZQUIERDA: lista de conversaciones -->
     <aside class="sidebar">
+      <button id="auth-open-btn" class="btn btn-primary">
+        Iniciar sesión / Registrarse
+      </button>
+
       <div class="sidebar-header">
         <h2>Conversaciones</h2>
         <button id="new-thread" class="btn sm">+ Nueva</button>
@@ -94,8 +73,37 @@
   </div>
   <script src="config.js"></script>
   <script type="module" src="script.js"></script>
+
+  <!-- Ventana emergente de autenticación -->
+<div id="auth-modal" class="auth-modal">
+  <div class="auth-modal-content">
+    <button id="auth-close-btn" class="auth-close">&times;</button>
+    <h2>Ingresar a Oppi</h2>
+
+    <div class="auth-section">
+      <h3>Crear cuenta</h3>
+      <input id="register-email" type="email" placeholder="Email" />
+      <input id="register-password" type="password" placeholder="Contraseña" />
+      <button id="register-btn">Registrarse</button>
+      <p id="register-status"></p>
+    </div>
+
+    <div class="auth-section">
+      <h3>Iniciar sesión</h3>
+      <input id="login-email" type="email" placeholder="Email" />
+      <input id="login-password" type="password" placeholder="Contraseña" />
+      <button id="login-btn">Entrar</button>
+      <p id="login-status"></p>
+    </div>
+
+    <button id="btn-ver-cuenta">Ver mis datos (debug)</button>
+    <pre id="me-output"></pre>
+  </div>
+</div>
+
 </body>
 </html>
+
 
 
 
