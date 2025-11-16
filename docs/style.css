@@ -678,65 +678,130 @@ code {
   transition: background 0.15s ease, transform 0.1s ease;
 }
 
-#new-thread-btn:hover {
-  background: rgba(24, 144, 255, 0.35);
-  transform: translateY(-1px);
-}
-
-.thread-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
+/* ─────────────────────────────
+   SIDEBAR DE CONVERSACIONES
+   ───────────────────────────── */
 
 #thread-list {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  margin-top: 0.3rem;
-  max-height: 60vh;
+  gap: 6px;
+  padding: 8px;
+  max-height: 100%;
   overflow-y: auto;
 }
 
-/* Cada chat de la lista */
-.thread-item {
-  width: 100%;
-  text-align: left;
-  border-radius: 10px;
-  border: none;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.82rem;
-  background: transparent;
-  color: #cfd9ff;
-  cursor: pointer;
+/* Cada fila de conversación */
+.thread-row {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  transition: background 0.15s ease, color 0.15s ease;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: transparent;
+  transition: background 0.15s ease, transform 0.1s ease;
 }
 
-.thread-item::before {
-  content: "💬";
+.thread-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  transform: translateX(1px);
+}
+
+/* Botón principal del hilo */
+.thread-item {
+  flex: 1;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  cursor: pointer;
   font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  transition: background 0.15s ease;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .thread-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.10);
 }
 
-.thread-item.active {
-  background: linear-gradient(135deg, #1b87ff, #33c6ff);
-  color: #fdfdfd;
+.thread-row.active .thread-item {
+  background: rgba(64, 158, 255, 0.25);
 }
 
-.thread-action {
-  background: transparent;
+/* Contenedor del menú de tres puntos */
+.thread-menu-wrapper {
+  position: relative;
+  margin-left: auto;
+}
+
+/* Botón de tres puntos */
+.thread-menu-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
   border: none;
   cursor: pointer;
-  font-size: 0.9rem;
-  opacity: 0.7;
+  background: transparent;
+  color: #bbb;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
-.thread-action:hover {
-  opacity: 1;
+.thread-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* Menú emergente */
+.thread-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  min-width: 140px;
+  padding: 4px;
+  background: #111827; /* gris azulado oscuro */
+  border-radius: 8px;
+  box-shadow: 0 12px 24px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.05);
+  display: none;
+  z-index: 20;
+}
+
+/* Cuando el wrapper tiene .open se muestra el menú */
+.thread-menu-wrapper.open .thread-menu {
+  display: block;
+}
+
+/* Botones dentro del menú */
+.thread-menu-btn-action {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.thread-menu-btn-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Botón de borrar con color un poquito más marcado al hover */
+.thread-menu-btn-action.danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fecaca;
 }
