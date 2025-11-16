@@ -602,5 +602,45 @@ code {
     padding: 1.4rem 1.1rem;
   }
 }
+/* Ocultar elementos con la clase hidden */
+.hidden {
+  display: none !important;
+}
+
+/* Información del usuario logueado (arriba, al lado del botón) */
+.auth-user-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #d7e9ff;
+  margin-left: 0.8rem;
+}
+
+#auth-user-label {
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+
+/* Botón de cerrar sesión */
+.btn-secundario {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: #f5f5f5;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-secundario:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
 
 
