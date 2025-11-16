@@ -269,6 +269,9 @@ if (typeof API_BASE === "string" && API_BASE) {
 const THREADS_KEY = "oppi.threads";
 const CURRENT_KEY = "oppi.currentThread";
 
+// Memoria corta de mensajes por thread (solo últimos 3)
+const HISTORY_KEY = "oppi.threadHistory";
+
 function uuid() {
   return crypto.randomUUID
     ? crypto.randomUUID()
@@ -290,8 +293,20 @@ function saveThreads(o) {
   localStorage.setItem(THREADS_KEY, JSON.stringify(o));
 }
 
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+function saveHistory(h) {
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+}
+
 let threads = loadThreads();
 let threadId = localStorage.getItem(CURRENT_KEY);
+let historyByThread = loadHistory();
 
 function ensureFirstThread() {
   if (!threadId) {
@@ -305,13 +320,37 @@ function ensureFirstThread() {
 ensureFirstThread();
 
 // ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones (UI)
+// Memoria corta: registrar y renderizar últimos 3 mensajes
+
+function recordMessage(role, text) {
+  if (!threadId || !text) return;
+  if (!historyByThread[threadId]) {
+    historyByThread[threadId] = [];
+  }
+
+  const arr = historyByThread[threadId];
+  arr.push({ role, text, ts: Date.now() });
+
+  // Solo guardamos los últimos 3
+  historyByThread[threadId] = arr.slice(-3);
+  saveHistory(historyByThread);
+}
 
 function clearChatUI() {
   if (box) box.innerHTML = "";
 }
 
-// Renderizar lista de conversaciones
+function renderHistoryForThread(id) {
+  if (!box) return;
+  const arr = historyByThread[id] || [];
+  for (const msg of arr) {
+    push(msg.role === "user" ? "user" : "oppi", msg.text, { allowHtml: false });
+  }
+}
+
+// ────────────────────────────────────────────────────────────────
+// Sidebar de conversaciones (UI)
+
 function renderThreads() {
   if (!threadList) return;
 
@@ -336,7 +375,6 @@ function renderThreads() {
   }
 }
 
-// Cambiar de conversación
 function switchThread(id) {
   if (!threads[id]) return;
   if (id === threadId) return;
@@ -345,6 +383,8 @@ function switchThread(id) {
   localStorage.setItem(CURRENT_KEY, id);
 
   clearChatUI();
+  // Mostrar historial corto de ese chat
+  renderHistoryForThread(id);
   push(
     "oppi",
     `Estás en: ${threads[id].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
@@ -353,7 +393,6 @@ function switchThread(id) {
   renderThreads();
 }
 
-// Crear un nuevo chat
 function createNewThread() {
   if (!ensureLoggedIn()) return;
 
@@ -383,6 +422,7 @@ renderThreads();
 
 // ────────────────────────────────────────────────────────────────
 // Render de chat y utilidades
+
 function push(who, text, { allowHtml = false } = {}) {
   const msg = document.createElement("div");
   msg.className = `msg ${who}`;
@@ -456,6 +496,7 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 
 // ────────────────────────────────────────────────────────────────
 // Enviar mensaje al backend (chat principal)
+
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!ensureLoggedIn()) return;
@@ -463,7 +504,10 @@ form?.addEventListener("submit", async (e) => {
   const text = input.value.trim();
   if (!text) return;
 
+  // Mostrar en pantalla y guardar en historial
   push("user", text);
+  recordMessage("user", text);
+
   input.value = "";
   setTyping(true);
 
@@ -490,6 +534,10 @@ form?.addEventListener("submit", async (e) => {
     }
 
     const reply = data.reply || "Hubo un problema al responder.";
+
+    // Guardar respuesta también en historial (en texto plano)
+    recordMessage("oppi", reply);
+
     const msgEl = push("oppi", toSimpleHtml(reply), { allowHtml: true });
     const ini = extractIniBlock(reply);
     if (ini) attachIniActions(msgEl, ini);
@@ -502,6 +550,7 @@ form?.addEventListener("submit", async (e) => {
 
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
+
 resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -512,6 +561,10 @@ resetBtn?.addEventListener("click", async () => {
       body: JSON.stringify({ threadId }),
     });
     push("oppi", "Memoria reiniciada ✅");
+
+    // Al resetear, también limpiamos el historial corto de ese chat
+    historyByThread[threadId] = [];
+    saveHistory(historyByThread);
   } catch {
     push("oppi", "Error al reiniciar memoria.");
   }
@@ -519,6 +572,7 @@ resetBtn?.addEventListener("click", async () => {
 
 // ────────────────────────────────────────────────────────────────
 // Importar perfil .ini (contexto)
+
 importBtn?.addEventListener("click", () => {
   if (!ensureLoggedIn()) return;
   iniFile?.click();
@@ -536,13 +590,15 @@ iniFile?.addEventListener("change", async () => {
   try {
     const r = await fetch(`${API_BASE}/import-ini`, { method: "POST", body: fd });
     const data = await r.json();
-    if (data.ok)
-      push(
-        "oppi",
-        toSimpleHtml(`Perfil importado ✅<br>${data.summary}`),
-        { allowHtml: true }
-      );
-    else push("oppi", `No pude importar: ${data.error}`);
+    if (data.ok) {
+      const msg = `Perfil importado ✅\n${data.summary || ""}`;
+      push("oppi", toSimpleHtml(msg), { allowHtml: true });
+
+      // También podemos registrar este último mensaje de Oppi como historial
+      recordMessage("oppi", msg);
+    } else {
+      push("oppi", `No pude importar: ${data.error}`);
+    }
   } catch {
     push("oppi", "Error de red importando el .ini.");
   } finally {
@@ -552,10 +608,14 @@ iniFile?.addEventListener("change", async () => {
 
 // ────────────────────────────────────────────────────────────────
 // Generar .ini automático con Oppi
+
 generateBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
-  push("user", "(Generar .ini con Oppi)");
+  const userMsg = "(Generar .ini con Oppi)";
+  push("user", userMsg);
+  recordMessage("user", userMsg);
+
   setTyping(true);
 
   try {
@@ -583,7 +643,10 @@ generateBtn?.addEventListener("click", async () => {
       return push("oppi", `No pude generar el .ini: ${msgError}`);
     }
 
-    const msgEl = push("oppi", "Perfil generado automáticamente ✅");
+    const msgText = "Perfil generado automáticamente ✅";
+    const msgEl = push("oppi", msgText);
+    recordMessage("oppi", msgText);
+
     attachIniActions(msgEl, data.iniText);
   } catch (err) {
     console.error("Error generando ini:", err);
@@ -594,10 +657,14 @@ generateBtn?.addEventListener("click", async () => {
 
 // ────────────────────────────────────────────────────────────────
 // 🔹 Sugerir modelo STL con Oppi (IA + historial de chat)
+
 suggestStlBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
-  push("user", "(Pedir modelo STL a Oppi)");
+  const userMsg = "(Pedir modelo STL a Oppi)";
+  push("user", userMsg);
+  recordMessage("user", userMsg);
+
   setTyping(true);
 
   try {
@@ -611,10 +678,11 @@ suggestStlBtn?.addEventListener("click", async () => {
     setTyping(false);
 
     if (!data.ok || !data.model) {
-      return push(
-        "oppi",
-        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir 😊"
-      );
+      const msgText =
+        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir 😊";
+      push("oppi", msgText);
+      recordMessage("oppi", msgText);
+      return;
     }
 
     const m = data.model;
@@ -625,8 +693,8 @@ suggestStlBtn?.addEventListener("click", async () => {
       <strong>${m.nombre}</strong><br>
       ${m.descripcion || ""}<br>
       <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${
-        m.dificultad || "-"
-      }<br>
+      m.dificultad || "-"
+    }<br>
       ${
         motivo
           ? `<em>Motivo:</em> ${motivo}<br>`
@@ -636,21 +704,34 @@ suggestStlBtn?.addEventListener("click", async () => {
     `;
 
     push("oppi", html, { allowHtml: true });
+
+    // Guardamos una versión "texto plano" del resumen para el historial corto
+    const resumenPlano = `STL sugerido: ${m.nombre} (${m.categoria || "-"})${
+      motivo ? ". Motivo: " + motivo : ""
+    }`;
+    recordMessage("oppi", resumenPlano);
   } catch (err) {
     console.error("Error al sugerir STL con IA:", err);
     setTyping(false);
-    push("oppi", "Tuvimos un problema al buscar el STL. Probá de nuevo.");
+    const msgText =
+      "Tuvimos un problema al buscar el STL. Probá de nuevo.";
+    push("oppi", msgText);
+    recordMessage("oppi", msgText);
   }
 });
 
 // ────────────────────────────────────────────────────────────────
 // Saludo inicial + inicializar estado de sesión
+
 window.addEventListener("load", () => {
   initAuthState();
+
+  // Mostrar historial corto del thread actual (si existe)
+  renderHistoryForThread(threadId);
+
   push(
     "oppi",
     "¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",
     { allowHtml: true }
   );
 });
-
