@@ -63,6 +63,11 @@ const iniFile = document.getElementById("ini-file");
 const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn = document.getElementById("open-ini-prusa-btn");
+// Botón para abrir el modal y elementos del modal
+const authOpenBtn = document.getElementById("auth-open-btn");
+const authModal = document.getElementById("auth-modal");
+const authCloseBtn = document.getElementById("auth-close-btn");
+
 
 // 🔹 NUEVO: botón para sugerir STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
@@ -81,6 +86,32 @@ const loginStatus = document.getElementById("login-status");
 
 const btnVerCuenta = document.getElementById("btn-ver-cuenta");
 const meOutput = document.getElementById("me-output");
+
+function openAuthModal() {
+  authModal?.classList.add("open");
+}
+
+function closeAuthModal() {
+  authModal?.classList.remove("open");
+}
+
+// Abrir modal
+authOpenBtn?.addEventListener("click", () => {
+  openAuthModal();
+});
+
+// Cerrar modal con la X
+authCloseBtn?.addEventListener("click", () => {
+  closeAuthModal();
+});
+
+// Cerrar modal haciendo click afuera del cuadro
+authModal?.addEventListener("click", (e) => {
+  if (e.target === authModal) {
+    closeAuthModal();
+  }
+});
+
 
 // ────────────────────────────────────────────────────────────────
 // Registro (signUp)
@@ -458,4 +489,5 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
+
 
