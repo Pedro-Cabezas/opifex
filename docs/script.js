@@ -4,49 +4,11 @@ const API_BASE = "https://oppi-backend.onrender.com";
 // const API_BASE = "";
 
 // ────────────────────────────────────────────────────────────────
-// Supabase (Auth)
+// Supabase (solo Auth)
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 window.supabase = supabase;
-
-// Helper para llamar a backend con token
-async function callBackend(path, options = {}) {
-  const {
-    data: { session },
-    error,
-  } = await supabase.auth.getSession();
-
-  if (error) {
-    console.error("Error obteniendo sesión:", error);
-    throw new Error("Error al obtener la sesión");
-  }
-
-  if (!session) {
-    throw new Error("No hay sesión activa (usuario no logueado)");
-  }
-
-  const token = session.access_token;
-  const isFormData = options.body instanceof FormData;
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${token}`,
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    },
-  });
-
-  const body = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    console.error("Error backend:", body);
-    throw new Error(body.error || "Error en el backend");
-  }
-
-  return body;
-}
 
 // ────────────────────────────────────────────────────────────────
 // Estado de sesión / elementos de autenticación
@@ -127,45 +89,6 @@ function updateAuthUI() {
   }
 }
 
-async function syncThreadsFromBackend() {
-  // Opcional: si no existe /api/threads/list, esto fallará y lo ignoramos
-  try {
-    const data = await callBackend("/api/threads/list", {
-      method: "GET",
-    });
-
-    if (!data || !Array.isArray(data.threads)) return;
-
-    threads = {};
-    for (const t of data.threads) {
-      threads[t.threadId] = {
-        name: t.name || "Chat sin título",
-        created: t.createdAt ? new Date(t.createdAt).getTime() : Date.now(),
-      };
-    }
-    saveThreads(threads);
-
-    const ids = Object.keys(threads);
-    if (!threads[threadId] && ids.length > 0) {
-      threadId = ids[0];
-      localStorage.setItem(CURRENT_KEY, threadId);
-    }
-
-    renderThreads();
-    clearChatUI();
-    if (threadId) {
-      renderHistoryForThread(threadId);
-      push(
-        "oppi",
-        `Estás en: ${threads[threadId].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
-      );
-    }
-  } catch (err) {
-    console.warn("No pude sincronizar hilos desde backend (continuo con local):", err);
-    renderThreads();
-  }
-}
-
 async function initAuthState() {
   const { data, error } = await supabase.auth.getSession();
   if (!error && data.session?.user) {
@@ -174,29 +97,15 @@ async function initAuthState() {
     currentUser = null;
   }
   updateAuthUI();
-  if (currentUser) {
-    await syncThreadsFromBackend();
-  } else {
-    renderThreads();
-  }
+  renderThreads(); // usamos solo localStorage por ahora
 }
 
 supabase.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user ?? null;
   updateAuthUI();
 
-  if (currentUser) {
-    // Limpiamos estados locales por si venía otro usuario
-    threads = {};
-    historyByThread = {};
-    localStorage.removeItem(THREADS_KEY);
-    localStorage.removeItem(HISTORY_KEY);
-    localStorage.removeItem(CURRENT_KEY);
-    threadId = null;
-    ensureFirstThread();
-    await syncThreadsFromBackend();
-  } else {
-    // Al desloguearse, limpiamos todo
+  if (!currentUser) {
+    // limpiar todo al desloguear
     threads = {};
     historyByThread = {};
     localStorage.removeItem(THREADS_KEY);
@@ -285,13 +194,38 @@ if (loginBtn) {
   });
 }
 
-// Debug /api/me
+// Debug /api/me (usa token, pero no afecta al resto si falla)
+async function callBackend(path, options = {}) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) throw new Error("Error al obtener la sesión");
+  if (!session) throw new Error("No hay sesión activa");
+
+  const token = session.access_token;
+  const isFormData = options.body instanceof FormData;
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    },
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || "Error en el backend");
+  return body;
+}
+
 if (btnVerCuenta) {
   btnVerCuenta.addEventListener("click", async () => {
     meOutput.textContent = "Consultando /api/me...";
-
     try {
-      const data = await callBackend("/api/me");
+      const data = await callBackend("/api/me", { method: "GET" });
       meOutput.textContent = JSON.stringify(data, null, 2);
     } catch (err) {
       meOutput.textContent = "Error: " + err.message;
@@ -385,87 +319,7 @@ function renderHistoryForThread(id) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Menú de tres puntitos (renombrar / borrar)
-
-let menuThreadId = null;
-let threadMenu = null;
-
-function ensureThreadMenu() {
-  if (threadMenu) return threadMenu;
-
-  const menu = document.createElement("div");
-  menu.id = "thread-context-menu";
-  menu.className = "thread-context-menu";
-  menu.style.position = "fixed";
-  menu.style.minWidth = "170px";
-  menu.style.background = "rgba(10,10,20,0.98)";
-  menu.style.border = "1px solid rgba(255,255,255,0.06)";
-  menu.style.borderRadius = "10px";
-  menu.style.padding = "4px 0";
-  menu.style.display = "none";
-  menu.style.zIndex = "9999";
-  menu.style.backdropFilter = "blur(8px)";
-
-  const addItem = (label, onClick) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.textContent = label;
-    b.style.display = "block";
-    b.style.width = "100%";
-    b.style.textAlign = "left";
-    b.style.padding = "8px 14px";
-    b.style.background = "transparent";
-    b.style.border = "none";
-    b.style.cursor = "pointer";
-    b.style.fontSize = "0.9rem";
-    b.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-    });
-    menu.appendChild(b);
-  };
-
-  addItem("Renombrar", () => {
-    const id = menuThreadId;
-    hideThreadMenu();
-    if (id) renameThread(id);
-  });
-
-  addItem("Eliminar conversación", () => {
-    const id = menuThreadId;
-    hideThreadMenu();
-    if (id) deleteThread(id);
-  });
-
-  menu.addEventListener("click", (e) => e.stopPropagation());
-  document.body.appendChild(menu);
-  threadMenu = menu;
-  return menu;
-}
-
-function showThreadMenu(threadIdParam, anchorEl) {
-  const menu = ensureThreadMenu();
-  menuThreadId = threadIdParam;
-
-  const rect = anchorEl.getBoundingClientRect();
-  const menuWidth = 190;
-
-  menu.style.top = rect.bottom + 4 + "px";
-  menu.style.left = rect.right - menuWidth + "px";
-  menu.style.display = "block";
-}
-
-function hideThreadMenu() {
-  if (!threadMenu) return;
-  threadMenu.style.display = "none";
-  menuThreadId = null;
-}
-
-document.addEventListener("click", () => hideThreadMenu());
-
-// ────────────────────────────────────────────────────────────────
-// Sidebar de conversaciones
+// Sidebar de conversaciones (botón + tres puntitos simples)
 
 function renderThreads() {
   if (!threadList) return;
@@ -497,15 +351,11 @@ function renderThreads() {
     menuBtn.type = "button";
     menuBtn.className = "thread-menu-trigger";
     menuBtn.textContent = "⋮";
+    menuBtn.title = "Opciones";
     menuBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const open = menuThreadId === id && threadMenu?.style.display === "block";
-      if (open) {
-        hideThreadMenu();
-      } else {
-        showThreadMenu(id, menuBtn);
-      }
+      openInlineMenu(id, row);
     });
 
     row.appendChild(btn);
@@ -513,11 +363,65 @@ function renderThreads() {
     threadList.appendChild(row);
   }
 
-  // Aseguramos scroll vertical
+  // scroll vertical en la columna de chats
   const scrollHost = threadList.parentElement || threadList;
   scrollHost.style.overflowY = "auto";
   scrollHost.style.maxHeight = "calc(100vh - 160px)";
 }
+
+// Menú inline sencillo debajo de la fila
+let currentInlineMenu = null;
+
+function closeInlineMenu() {
+  if (currentInlineMenu) {
+    currentInlineMenu.remove();
+    currentInlineMenu = null;
+  }
+}
+
+function openInlineMenu(id, row) {
+  closeInlineMenu();
+
+  const menu = document.createElement("div");
+  menu.className = "thread-inline-menu";
+  menu.style.marginTop = "4px";
+  menu.style.width = "100%";
+  menu.style.background = "rgba(10,10,20,0.98)";
+  menu.style.borderRadius = "10px";
+  menu.style.border = "1px solid rgba(255,255,255,0.06)";
+  menu.style.padding = "4px 0";
+  menu.style.display = "flex";
+  menu.style.flexDirection = "column";
+  menu.style.gap = "2px";
+
+  const addItem = (label, handler) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.style.border = "none";
+    b.style.background = "transparent";
+    b.style.textAlign = "left";
+    b.style.width = "100%";
+    b.style.padding = "6px 10px";
+    b.style.fontSize = "0.85rem";
+    b.style.cursor = "pointer";
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handler();
+      closeInlineMenu();
+    });
+    menu.appendChild(b);
+  };
+
+  addItem("Renombrar", () => renameThread(id));
+  addItem("Eliminar", () => deleteThread(id));
+
+  row.insertAdjacentElement("afterend", menu);
+  currentInlineMenu = menu;
+}
+
+document.addEventListener("click", () => closeInlineMenu());
 
 function switchThread(id) {
   if (!threads[id]) return;
@@ -536,7 +440,7 @@ function switchThread(id) {
   renderThreads();
 }
 
-async function createNewThread() {
+function createNewThread() {
   if (!ensureLoggedIn()) return;
 
   const id = uuid();
@@ -550,18 +454,7 @@ async function createNewThread() {
 
   clearChatUI();
   push("oppi", "Nuevo chat creado. Contame qué querés imprimir.");
-
   renderThreads();
-
-  // Avisar al backend (si tenés endpoint de resumen, lo podés usar acá)
-  try {
-    await callBackend("/api/threads/rename", {
-      method: "POST",
-      body: JSON.stringify({ threadId: id, name: threads[id].name }),
-    });
-  } catch (err) {
-    console.warn("No se pudo registrar el nuevo hilo en backend (no crítico):", err);
-  }
 }
 
 async function renameThread(id) {
@@ -576,14 +469,7 @@ async function renameThread(id) {
   saveThreads(threads);
   renderThreads();
 
-  try {
-    await callBackend("/api/threads/rename", {
-      method: "POST",
-      body: JSON.stringify({ threadId: id, name: newName }),
-    });
-  } catch (err) {
-    console.error("Error renombrando hilo en backend:", err);
-  }
+  // si más adelante tenés endpoint /api/threads/rename, se puede llamar acá
 }
 
 async function deleteThread(id) {
@@ -591,18 +477,9 @@ async function deleteThread(id) {
   if (!ensureLoggedIn()) return;
 
   const confirmed = confirm(
-    "¿Seguro que querés borrar esta conversación? También se eliminará de la base de datos si existe."
+    "¿Seguro que querés borrar esta conversación? (Solo se borra del dispositivo por ahora)"
   );
   if (!confirmed) return;
-
-  try {
-    await callBackend("/api/threads/delete", {
-      method: "POST",
-      body: JSON.stringify({ threadId: id }),
-    });
-  } catch (err) {
-    console.error("Error borrando hilo en backend:", err);
-  }
 
   delete threads[id];
   saveThreads(threads);
@@ -714,7 +591,7 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Eventos principales
+// Eventos principales (TODOS con fetch directo)
 
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -729,13 +606,20 @@ form?.addEventListener("submit", async (e) => {
   setTyping(true);
 
   try {
-    const threadName = threads[threadId]?.name || null;
-    const data = await callBackend("/chat-oppi", {
+    const r = await fetch(`${API_BASE}/chat-oppi`, {
       method: "POST",
-      body: JSON.stringify({ message: text, threadId, threadName }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, threadId }),
     });
 
+    const data = await r.json().catch(() => ({}));
     setTyping(false);
+
+    if (!r.ok) {
+      const msg = data.error || `Error del servidor (${r.status})`;
+      push("oppi", `No pude responder: ${msg}`);
+      return;
+    }
 
     const reply = data.reply || "Hubo un problema al responder.";
     recordMessage("oppi", reply);
@@ -754,10 +638,12 @@ resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
   try {
-    await callBackend("/reset-thread", {
+    const r = await fetch(`${API_BASE}/reset-thread`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
+    await r.json().catch(() => ({}));
     push("oppi", "Memoria reiniciada.");
     historyByThread[threadId] = [];
     saveHistory(historyByThread);
@@ -785,22 +671,24 @@ iniFile?.addEventListener("change", async () => {
   fd.append("threadId", threadId);
 
   try {
-    const data = await callBackend("/import-ini", {
+    const r = await fetch(`${API_BASE}/import-ini`, {
       method: "POST",
       body: fd,
     });
+    const data = await r.json().catch(() => ({}));
 
-    if (data.ok) {
-      const msg = `Perfil importado.\n${data.summary || ""}`;
-      push("oppi", toSimpleHtml(msg), { allowHtml: true });
-      recordMessage("oppi", msg);
-    } else {
+    if (!r.ok || !data.ok) {
       const msg = `No pude importar: ${
-        data.error || "Error desconocido al importar"
+        data.error || `Error del servidor (${r.status})`
       }`;
       push("oppi", msg);
       recordMessage("oppi", msg);
+      return;
     }
+
+    const msg = `Perfil importado.\n${data.summary || ""}`;
+    push("oppi", toSimpleHtml(msg), { allowHtml: true });
+    recordMessage("oppi", msg);
   } catch (err) {
     console.error("Error importando .ini:", err);
     const msg = `Error de red importando el .ini: ${err.message}`;
@@ -820,15 +708,16 @@ generateBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const data = await callBackend("/generate-ini-ai", {
+    const r = await fetch(`${API_BASE}/generate-ini-ai`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
-
+    const data = await r.json().catch(() => ({}));
     setTyping(false);
 
-    if (!data.ok) {
-      const msgError = data?.error || "Error al generar el .ini";
+    if (!r.ok || !data.ok) {
+      const msgError = data.error || `Error del servidor (${r.status})`;
       const msg = `No pude generar el .ini: ${msgError}`;
       push("oppi", msg);
       recordMessage("oppi", msg);
@@ -838,7 +727,6 @@ generateBtn?.addEventListener("click", async () => {
     const msgText = "Perfil generado automáticamente.";
     const msgEl = push("oppi", msgText);
     recordMessage("oppi", msgText);
-
     attachIniActions(msgEl, data.iniText);
   } catch (err) {
     console.error("Error generando ini:", err);
@@ -858,17 +746,18 @@ suggestStlBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const data = await callBackend("/api/stl/suggest-ai", {
+    const r = await fetch(`${API_BASE}/api/stl/suggest-ai`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
-
+    const data = await r.json().catch(() => ({}));
     setTyping(false);
 
-    if (!data.ok || !data.model) {
+    if (!r.ok || !data.ok || !data.model) {
       const msgText =
-        data?.error ||
-        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir.";
+        data.error ||
+        `Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir.`;
       push("oppi", msgText);
       recordMessage("oppi", msgText);
       return;
