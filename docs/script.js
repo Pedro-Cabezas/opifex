@@ -15,6 +15,7 @@ const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 // Lo dejo global por si querés usarlo en otros archivos / consola
 window.supabase = supabase;
 
+// Helper para llamar a tu backend con el token de Supabase
 async function callBackend(path, options = {}) {
   const {
     data: { session },
@@ -52,7 +53,6 @@ async function callBackend(path, options = {}) {
 
   return body;
 }
-
 
 // ────────────────────────────────────────────────────────────────
 // Estado de sesión / elementos de autenticación
@@ -499,9 +499,6 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 // ────────────────────────────────────────────────────────────────
 // Enviar mensaje al backend (chat principal)
 
-// ────────────────────────────────────────────────────────────────
-// Enviar mensaje al backend (chat principal)
-
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!ensureLoggedIn()) return;
@@ -539,7 +536,6 @@ form?.addEventListener("submit", async (e) => {
   }
 });
 
-
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
 
@@ -547,18 +543,19 @@ resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
   try {
-    await fetch(`${API_BASE}/reset-thread`, {
+    await callBackend("/reset-thread", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
+
     push("oppi", "Memoria reiniciada ✅");
 
     // Al resetear, también limpiamos el historial corto de ese chat
     historyByThread[threadId] = [];
     saveHistory(historyByThread);
-  } catch {
-    push("oppi", "Error al reiniciar memoria.");
+  } catch (err) {
+    console.error("Error al reiniciar memoria:", err);
+    push("oppi", `Error al reiniciar memoria: ${err.message}`);
   }
 });
 
@@ -580,19 +577,24 @@ iniFile?.addEventListener("change", async () => {
   fd.append("threadId", threadId);
 
   try {
-    const r = await fetch(`${API_BASE}/import-ini`, { method: "POST", body: fd });
-    const data = await r.json();
+    const data = await callBackend("/import-ini", {
+      method: "POST",
+      body: fd, // FormData: callBackend no fuerza Content-Type
+    });
+
     if (data.ok) {
       const msg = `Perfil importado ✅\n${data.summary || ""}`;
       push("oppi", toSimpleHtml(msg), { allowHtml: true });
-
-      // También podemos registrar este último mensaje de Oppi como historial
       recordMessage("oppi", msg);
     } else {
-      push("oppi", `No pude importar: ${data.error}`);
+      push(
+        "oppi",
+        `No pude importar: ${data.error || "Error desconocido al importar"}`
+      );
     }
-  } catch {
-    push("oppi", "Error de red importando el .ini.");
+  } catch (err) {
+    console.error("Error de red importando el .ini:", err);
+    push("oppi", `Error de red importando el .ini: ${err.message}`);
   } finally {
     iniFile.value = "";
   }
@@ -611,27 +613,15 @@ generateBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/generate-ini-ai`, {
+    const data = await callBackend("/generate-ini-ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
 
-    let data;
-    try {
-      data = await r.json();
-    } catch (e) {
-      setTyping(false);
-      return push(
-        "oppi",
-        "El backend no devolvió JSON válido al generar el .ini."
-      );
-    }
-
     setTyping(false);
 
-    if (!r.ok || !data.ok) {
-      const msgError = data?.error || `Error del servidor (${r.status})`;
+    if (!data.ok) {
+      const msgError = data?.error || "Error al generar el .ini";
       return push("oppi", `No pude generar el .ini: ${msgError}`);
     }
 
@@ -643,7 +633,7 @@ generateBtn?.addEventListener("click", async () => {
   } catch (err) {
     console.error("Error generando ini:", err);
     setTyping(false);
-    push("oppi", "Error de red generando el .ini.");
+    push("oppi", `Error de red generando el .ini: ${err.message}`);
   }
 });
 
@@ -660,17 +650,16 @@ suggestStlBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/api/stl/suggest-ai`, {
+    const data = await callBackend("/api/stl/suggest-ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
 
-    const data = await r.json();
     setTyping(false);
 
     if (!data.ok || !data.model) {
       const msgText =
+        data?.error ||
         "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir 😊";
       push("oppi", msgText);
       recordMessage("oppi", msgText);
@@ -687,17 +676,12 @@ suggestStlBtn?.addEventListener("click", async () => {
       <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${
       m.dificultad || "-"
     }<br>
-      ${
-        motivo
-          ? `<em>Motivo:</em> ${motivo}<br>`
-          : ""
-      }
+      ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
       <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">⬇️ Descargar STL</a>
     `;
 
     push("oppi", html, { allowHtml: true });
 
-    // Guardamos una versión "texto plano" del resumen para el historial corto
     const resumenPlano = `STL sugerido: ${m.nombre} (${m.categoria || "-"})${
       motivo ? ". Motivo: " + motivo : ""
     }`;
@@ -727,4 +711,5 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
+
 
