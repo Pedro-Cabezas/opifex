@@ -39,7 +39,6 @@ async function callBackend(path, options = {}) {
     headers: {
       ...(options.headers || {}),
       Authorization: `Bearer ${token}`,
-      // Solo ponemos Content-Type en JSON. Para FormData lo deja el navegador.
       ...(isFormData ? {} : { "Content-Type": "application/json" }),
     },
   });
@@ -143,29 +142,96 @@ function updateAuthUI() {
   }
 }
 
+// Sincronizar hilos desde Supabase para el usuario actual
+async function syncThreadsFromSupabase() {
+  if (!currentUser) return;
+
+  const { data, error } = await supabase
+    .from("oppi_threads")
+    .select("thread_id, name, created_at")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error cargando hilos desde Supabase:", error);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    // Usuario nuevo: se queda con las conversaciones locales (si hubiera)
+    renderThreads();
+    return;
+  }
+
+  threads = {};
+  for (const row of data) {
+    threads[row.thread_id] = {
+      name: row.name || "Chat sin título",
+      created: row.created_at ? new Date(row.created_at).getTime() : Date.now(),
+    };
+  }
+  saveThreads(threads);
+
+  // Si el hilo actual no existe, elegimos el primero
+  if (!threads[threadId]) {
+    const ids = Object.keys(threads);
+    if (ids.length > 0) {
+      threadId = ids[0];
+      localStorage.setItem(CURRENT_KEY, threadId);
+    }
+  }
+
+  renderThreads();
+  clearChatUI();
+  if (threadId) {
+    renderHistoryForThread(threadId);
+    push(
+      "oppi",
+      `Estás en: ${threads[threadId].name || "Nuevo chat"}. Podés seguir hablando o empezar un tema nuevo.`
+    );
+  }
+}
+
 async function initAuthState() {
   const { data, error } = await supabase.auth.getSession();
-  if (!error) {
-    currentUser = data.session?.user ?? null;
+  if (!error && data.session?.user) {
+    currentUser = data.session.user;
   } else {
-    console.error("Error obteniendo sesión:", error);
     currentUser = null;
   }
   updateAuthUI();
+  if (currentUser) {
+    syncThreadsFromSupabase();
+  }
 }
 
 // Escuchar cambios de sesión (login / logout / registro)
-supabase.auth.onAuthStateChange((_event, session) => {
+supabase.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user ?? null;
   updateAuthUI();
+
+  if (currentUser) {
+    // Al loguearse: cargar hilos de la cuenta
+    await syncThreadsFromSupabase();
+  } else {
+    // Al desloguearse: limpiar hilos locales para no ver los de otra cuenta
+    threads = {};
+    historyByThread = {};
+    localStorage.removeItem(THREADS_KEY);
+    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(CURRENT_KEY);
+
+    threadId = null;
+    ensureFirstThread();
+    clearChatUI();
+    renderThreads();
+  }
 });
 
 // Cerrar sesión
 authLogoutBtn?.addEventListener("click", async () => {
   try {
     await supabase.auth.signOut();
-    currentUser = null;
-    updateAuthUI();
+    // El listener onAuthStateChange se encarga de limpiar todo
     push("oppi", "Cerraste sesión. Podés volver a iniciar cuando quieras.");
   } catch (err) {
     console.error("Error al cerrar sesión:", err);
@@ -267,7 +333,7 @@ if (typeof API_BASE === "string" && API_BASE) {
 // Control de hilos / memoria (threads de conversación)
 const THREADS_KEY = "oppi.threads";
 const CURRENT_KEY = "oppi.currentThread";
-const HISTORY_KEY = "oppi.threadHistory"; // últimos 3 mensajes
+const HISTORY_KEY = "oppi.threadHistory";
 
 function uuid() {
   return crypto.randomUUID
@@ -327,7 +393,7 @@ function recordMessage(role, text) {
 
   const arr = historyByThread[threadId];
   arr.push({ role, text, ts: Date.now() });
-  historyByThread[threadId] = arr.slice(-3); // últimos 3
+  historyByThread[threadId] = arr.slice(-3);
   saveHistory(historyByThread);
 }
 
@@ -367,7 +433,6 @@ function ensureThreadMenu() {
   const btnRename = document.createElement("button");
   btnRename.type = "button";
   btnRename.textContent = "Renombrar";
-  btnRename.className = "thread-menu-btn-action";
   btnRename.style.display = "block";
   btnRename.style.width = "100%";
   btnRename.style.textAlign = "left";
@@ -383,7 +448,6 @@ function ensureThreadMenu() {
   const btnDelete = document.createElement("button");
   btnDelete.type = "button";
   btnDelete.textContent = "Eliminar conversación";
-  btnDelete.className = "thread-menu-btn-action danger";
   btnDelete.style.display = "block";
   btnDelete.style.width = "100%";
   btnDelete.style.textAlign = "left";
@@ -399,7 +463,6 @@ function ensureThreadMenu() {
   menu.appendChild(btnRename);
   menu.appendChild(btnDelete);
 
-  // Evitar que el click dentro del menú cierre y dispare cosas debajo
   menu.addEventListener("click", (e) => {
     e.stopPropagation();
   });
@@ -409,9 +472,9 @@ function ensureThreadMenu() {
   return menu;
 }
 
-function showThreadMenu(threadId, anchorEl) {
+function showThreadMenu(threadIdParam, anchorEl) {
   const menu = ensureThreadMenu();
-  menuThreadId = threadId;
+  menuThreadId = threadIdParam;
 
   const rect = anchorEl.getBoundingClientRect();
   const menuWidth = 180;
@@ -427,7 +490,6 @@ function hideThreadMenu() {
   menuThreadId = null;
 }
 
-// Cerrar menú al hacer click en cualquier lado
 document.addEventListener("click", () => {
   hideThreadMenu();
 });
@@ -503,8 +565,8 @@ function switchThread(id) {
   renderThreads();
 }
 
-// Crear nueva conversación
-function createNewThread() {
+// Crear nueva conversación (local + Supabase)
+async function createNewThread() {
   if (!ensureLoggedIn()) return;
 
   const id = uuid();
@@ -523,9 +585,20 @@ function createNewThread() {
   push("oppi", "Nuevo chat creado. Contame qué querés imprimir.");
 
   renderThreads();
+
+  // Guardar en Supabase
+  try {
+    await supabase.from("oppi_threads").insert({
+      user_id: currentUser.id,
+      thread_id: id,
+      name: threads[id].name,
+    });
+  } catch (err) {
+    console.error("Error guardando hilo en Supabase:", err);
+  }
 }
 
-// Renombrar hilo (local + backend)
+// Renombrar hilo (local + Supabase)
 async function renameThread(id) {
   if (!threads[id]) return;
   if (!ensureLoggedIn()) return;
@@ -539,34 +612,38 @@ async function renameThread(id) {
   renderThreads();
 
   try {
-    await callBackend("/api/threads/rename", {
-      method: "POST",
-      body: JSON.stringify({ threadId: id, name: newName }),
+    await supabase.from("oppi_threads").upsert({
+      user_id: currentUser.id,
+      thread_id: id,
+      name: newName,
     });
   } catch (err) {
-    console.error("Error renombrando hilo en el backend:", err);
+    console.error("Error renombrando hilo en Supabase:", err);
   }
 }
 
-// Borrar hilo (local + backend)
+// Borrar hilo (local + Supabase)
 async function deleteThread(id) {
   if (!threads[id]) return;
   if (!ensureLoggedIn()) return;
 
   const confirmed = confirm(
-    "¿Seguro que querés borrar esta conversación? Se va a eliminar también de la base de datos si existe."
+    "¿Seguro que querés borrar esta conversación? Se va a eliminar también de la base de datos."
   );
   if (!confirmed) return;
 
+  // Borrar en Supabase
   try {
-    await callBackend("/api/threads/delete", {
-      method: "POST",
-      body: JSON.stringify({ threadId: id }),
-    });
+    await supabase
+      .from("oppi_threads")
+      .delete()
+      .eq("user_id", currentUser.id)
+      .eq("thread_id", id);
   } catch (err) {
-    console.error("Error borrando hilo en el backend:", err);
+    console.error("Error borrando hilo en Supabase:", err);
   }
 
+  // Borrar en el frontend
   delete threads[id];
   saveThreads(threads);
 
@@ -608,7 +685,7 @@ newThreadBtn?.addEventListener("click", (e) => {
 // Render inicial de threads
 renderThreads();
 
-// Forzar que la lista de threads tenga scroll (por si el CSS no lo puso)
+// Forzar que la barra de chats tenga scroll
 if (threadList) {
   const scrollHost = threadList.parentElement || threadList;
   scrollHost.style.overflowY = "auto";
@@ -902,7 +979,6 @@ suggestStlBtn?.addEventListener("click", async () => {
 window.addEventListener("load", () => {
   initAuthState();
 
-  // Forzar scroll en la zona de chats
   if (threadList) {
     const scrollHost = threadList.parentElement || threadList;
     scrollHost.style.overflowY = "auto";
