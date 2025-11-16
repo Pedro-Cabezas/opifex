@@ -642,5 +642,85 @@ code {
   border-color: rgba(255, 255, 255, 0.45);
 }
 
+.layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1rem;
+}
+
+/* Sidebar de chats */
+.chat-sidebar {
+  background: rgba(5, 5, 15, 0.95);
+  border-radius: 14px;
+  padding: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.threads-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: #d9e7ff;
+}
+
+#new-thread-btn {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: none;
+  background: rgba(24, 144, 255, 0.18);
+  color: #e9f3ff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+#new-thread-btn:hover {
+  background: rgba(24, 144, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+#thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* Cada chat de la lista */
+.thread-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 10px;
+  border: none;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.82rem;
+  background: transparent;
+  color: #cfd9ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.thread-item::before {
+  content: "💬";
+  font-size: 0.9rem;
+}
+
+.thread-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.thread-item.active {
+  background: linear-gradient(135deg, #1b87ff, #33c6ff);
+  color: #fdfdfd;
+}
 
 
