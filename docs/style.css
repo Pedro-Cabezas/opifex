@@ -392,15 +392,20 @@ code {
   border-radius: 0.75rem;
   padding: 1rem;
 }
-/* Fondo oscuro del modal */
+/* ─────────────────────────────
+   MODAL DE AUTENTICACIÓN (Oppi)
+   ───────────────────────────── */
+
 .auth-modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: none;              /* oculto por defecto */
+  background: radial-gradient(circle at top, rgba(0, 150, 255, 0.25), transparent 55%)
+              rgba(0, 0, 0, 0.75);
+  display: none;                 /* oculto por defecto */
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(6px);
 }
 
 /* Cuando está abierto */
@@ -408,31 +413,134 @@ code {
   display: flex;
 }
 
-/* Caja blanca (o oscura) del modal */
+/* Caja del modal */
 .auth-modal-content {
-  background: #111;           /* o #fff si tu ui es clara */
+  background: #101018;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 1.8rem 1.6rem;
+  width: min(100%, 420px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
   color: #f5f5f5;
-  padding: 1.5rem;
-  border-radius: 12px;
-  min-width: 280px;
-  max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  position: relative;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  transform: translateY(10px);
+  opacity: 0;
+  animation: authModalIn 0.25s ease-out forwards;
 }
 
+/* Animación de entrada */
+@keyframes authModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Título */
+.auth-modal-content h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Secciones de registro / login */
 .auth-section {
-  margin-bottom: 1rem;
+  padding: 0.8rem 0.6rem;
+  border-radius: 10px;
+  background: radial-gradient(circle at top left, rgba(0, 180, 255, 0.12), transparent 60%)
+              rgba(255, 255, 255, 0.02);
 }
 
 .auth-section h3 {
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  opacity: 0.9;
 }
 
+/* Inputs */
 .auth-section input {
   width: 100%;
   margin-bottom: 0.5rem;
-  padding: 0.4rem 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 8, 16, 0.95);
+  color: #f8f8f8;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.auth-section input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.auth-section input:focus {
+  border-color: #21a4ff;
+  box-shadow: 0 0 0 1px rgba(33, 164, 255, 0.45);
+  background: #050511;
+}
+
+/* Botones dentro del modal */
+.auth-section button,
+#btn-ver-cuenta {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: linear-gradient(135deg, #1b87ff, #33c6ff);
+  color: #fdfdfd;
+  box-shadow: 0 8px 20px rgba(24, 144, 255, 0.45);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.1s ease;
+}
+
+.auth-section button:hover,
+#btn-ver-cuenta:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 10px 26px rgba(24, 144, 255, 0.55);
+}
+
+.auth-section button:active,
+#btn-ver-cuenta:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 14px rgba(24, 144, 255, 0.4);
+}
+
+/* Mensajes de estado */
+#register-status,
+#login-status {
+  margin: 0.3rem 0 0 0;
+  font-size: 0.78rem;
+  min-height: 1em;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Área debug de /api/me */
+#me-output {
+  margin-top: 0.4rem;
+  max-height: 120px;
+  overflow: auto;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.5rem;
+  background: rgba(0, 0, 0, 0.45);
+  border-radius: 8px;
 }
 
 /* Botón de cierre (X) */
@@ -442,16 +550,57 @@ code {
   right: 10px;
   border: none;
   background: transparent;
-  color: #fff;
-  font-size: 1.2rem;
+  color: #888;
+  font-size: 1.4rem;
   cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
 }
 
-/* Botón principal (puede usar tu estilo existente .btn) */
-.btn-primary {
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  border: none;
-  cursor: pointer;
+.auth-close:hover {
+  color: #fff;
+  transform: scale(1.05);
 }
+
+/* Botón que abre el modal (podés adaptar a tu clase .btn si ya existe) */
+#auth-open-btn {
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(33, 164, 255, 0.6);
+  background: rgba(10, 10, 20, 0.9);
+  color: #e9f5ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 0 0 1px rgba(23, 108, 190, 0.6);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+#auth-open-btn::before {
+  content: "🔐";
+  font-size: 1rem;
+}
+
+#auth-open-btn:hover {
+  background: rgba(25, 40, 80, 0.95);
+  box-shadow: 0 0 12px rgba(33, 164, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+#auth-open-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 0 6px rgba(33, 164, 255, 0.4);
+}
+
+/* Responsive chico */
+@media (max-width: 480px) {
+  .auth-modal-content {
+    margin: 0 1rem;
+    padding: 1.4rem 1.1rem;
+  }
+}
+
 
