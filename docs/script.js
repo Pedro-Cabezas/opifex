@@ -15,7 +15,6 @@ const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 // Lo dejo global por si querés usarlo en otros archivos / consola
 window.supabase = supabase;
 
-// Helper para llamar a tu backend con el token de Supabase
 async function callBackend(path, options = {}) {
   const {
     data: { session },
@@ -32,13 +31,15 @@ async function callBackend(path, options = {}) {
   }
 
   const token = session.access_token;
+  const isFormData = options.body instanceof FormData;
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...(options.headers || {}),
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      // Solo ponemos Content-Type en JSON. Para FormData lo deja el navegador.
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
     },
   });
 
@@ -51,6 +52,7 @@ async function callBackend(path, options = {}) {
 
   return body;
 }
+
 
 // ────────────────────────────────────────────────────────────────
 // Estado de sesión / elementos de autenticación
@@ -497,6 +499,9 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 // ────────────────────────────────────────────────────────────────
 // Enviar mensaje al backend (chat principal)
 
+// ────────────────────────────────────────────────────────────────
+// Enviar mensaje al backend (chat principal)
+
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!ensureLoggedIn()) return;
@@ -512,26 +517,12 @@ form?.addEventListener("submit", async (e) => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/chat-oppi`, {
+    const data = await callBackend("/chat-oppi", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, threadId }),
     });
 
-    let data;
-    try {
-      data = await r.json();
-    } catch (e) {
-      setTyping(false);
-      return push("oppi", "El backend no devolvió JSON válido.");
-    }
-
     setTyping(false);
-
-    if (!r.ok) {
-      const msgError = data?.error || `Error del servidor (${r.status})`;
-      return push("oppi", `No pude responder: ${msgError}`);
-    }
 
     const reply = data.reply || "Hubo un problema al responder.";
 
@@ -544,9 +535,10 @@ form?.addEventListener("submit", async (e) => {
   } catch (err) {
     console.error("Error en chat-oppi:", err);
     setTyping(false);
-    push("oppi", "Error de red. Probá de nuevo.");
+    push("oppi", `No pude responder: ${err.message}`);
   }
 });
+
 
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
@@ -735,3 +727,4 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
+
