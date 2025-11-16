@@ -2,6 +2,52 @@
 // —— configuración de API (arriba del archivo)
 const API_BASE = "https://oppi-backend.onrender.com"; // en local podés dejar "" (cadena vacía)
 
+// script.js
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+// 1) Cliente de Supabase (FRONTEND)
+const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+
+// Lo dejo global por si querés usarlo en otros archivos
+window.supabase = supabase;
+
+// 2) Helper para llamar a tu backend con el token de Supabase
+async function callBackend(path, options = {}) {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+
+  if (error) {
+    console.error("Error obteniendo sesión:", error);
+    throw new Error("Error al obtener la sesión");
+  }
+
+  if (!session) {
+    throw new Error("No hay sesión activa (usuario no logueado)");
+  }
+
+  const token = session.access_token;
+
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  const body = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    console.error("Error backend:", body);
+    throw new Error(body.error || "Error en el backend");
+  }
+
+  return body;
+}
+
 // ────────────────────────────────────────────────────────────────
 // Referencias DOM
 const box = document.getElementById("chat-box");
@@ -15,6 +61,90 @@ const openIniFile = document.getElementById("open-ini-prusa-file");
 const openIniBtn  = document.getElementById("open-ini-prusa-btn");
 // 🔹 NUEVO: botón para sugerir STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
+// 3) Referencias a los elementos del DOM
+const registerEmail = document.getElementById("register-email");
+const registerPassword = document.getElementById("register-password");
+const registerBtn = document.getElementById("register-btn");
+const registerStatus = document.getElementById("register-status");
+
+const loginEmail = document.getElementById("login-email");
+const loginPassword = document.getElementById("login-password");
+const loginBtn = document.getElementById("login-btn");
+const loginStatus = document.getElementById("login-status");
+
+const btnVerCuenta = document.getElementById("btn-ver-cuenta");
+const meOutput = document.getElementById("me-output");
+
+// 4) Registro (signUp)
+if (registerBtn) {
+  registerBtn.addEventListener("click", async () => {
+    registerStatus.textContent = "Creando cuenta...";
+
+    const email = registerEmail.value.trim();
+    const password = registerPassword.value.trim();
+
+    if (!email || !password) {
+      registerStatus.textContent = "Completá email y contraseña.";
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (error) {
+      registerStatus.textContent = "Error: " + error.message;
+    } else {
+      registerStatus.textContent = "Cuenta creada. Revisá tu mail si pide confirmación.";
+      console.log("SignUp:", data);
+    }
+  });
+}
+
+// 5) Login (signInWithPassword)
+if (loginBtn) {
+  loginBtn.addEventListener("click", async () => {
+    loginStatus.textContent = "Iniciando sesión...";
+
+    const email = loginEmail.value.trim();
+    const password = loginPassword.value.trim();
+
+    if (!email || !password) {
+      loginStatus.textContent = "Completá email y contraseña.";
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      loginStatus.textContent = "Error: " + error.message;
+    } else {
+      loginStatus.textContent = "Sesión iniciada.";
+      console.log("SignIn:", data);
+    }
+  });
+}
+
+// 6) Probar /api/me en tu backend
+if (btnVerCuenta) {
+  btnVerCuenta.addEventListener("click", async () => {
+    meOutput.textContent = "Consultando /api/me...";
+
+    try {
+      const data = await callBackend("/api/me"); // O "https://TU-BACKEND.onrender.com/api/me"
+      meOutput.textContent = JSON.stringify(data, null, 2);
+    } catch (err) {
+      meOutput.textContent = "Error: " + err.message;
+      console.error(err);
+    }
+  });
+}
+
+
 
 // Si el backend está remoto, ocultamos la tarjeta "Abrir en Prusa"
 if (typeof API_BASE === "string" && API_BASE) {
@@ -277,6 +407,7 @@ suggestStlBtn?.addEventListener("click", async () => {
 window.addEventListener("load",()=>{
   push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",{allowHtml:true});
 });
+
 
 
 
