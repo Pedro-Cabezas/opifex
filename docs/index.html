@@ -9,6 +9,31 @@
 <body>
   <div class="app">
 
+<!-- BLOQUE DE AUTENTICACIÓN -->
+<div id="auth-box">
+  <h2>Ingresar a Oppi</h2>
+
+  <div class="auth-section">
+    <h3>Crear cuenta</h3>
+    <input id="register-email" type="email" placeholder="Email" />
+    <input id="register-password" type="password" placeholder="Contraseña" />
+    <button id="register-btn">Registrarse</button>
+    <p id="register-status"></p>
+  </div>
+
+  <div class="auth-section">
+    <h3>Iniciar sesión</h3>
+    <input id="login-email" type="email" placeholder="Email" />
+    <input id="login-password" type="password" placeholder="Contraseña" />
+    <button id="login-btn">Entrar</button>
+    <p id="login-status"></p>
+  </div>
+
+  <button id="btn-ver-cuenta">Ver mis datos (debug)</button>
+  <pre id="me-output"></pre>
+</div>
+
+    
     <!-- IZQUIERDA: lista de conversaciones -->
     <aside class="sidebar">
       <div class="sidebar-header">
@@ -71,6 +96,7 @@
   <script type="module" src="script.js"></script>
 </body>
 </html>
+
 
 
 
