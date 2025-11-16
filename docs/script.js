@@ -168,7 +168,7 @@ authLogoutBtn?.addEventListener("click", async () => {
     await supabase.auth.signOut();
     currentUser = null;
     updateAuthUI();
-    push("oppi", "Cerraste sesión. Podés volver a iniciar cuando quieras 🔐");
+    push("oppi", "Cerraste sesión. Podés volver a iniciar cuando quieras.");
   } catch (err) {
     console.error("Error al cerrar sesión:", err);
     push("oppi", "No pude cerrar sesión, probá de nuevo.");
@@ -180,7 +180,7 @@ function ensureLoggedIn() {
   if (!currentUser) {
     push(
       "oppi",
-      "Para usar todas las funciones de Oppi tenés que iniciar sesión 😊"
+      "Para usar todas las funciones de Oppi tenés que iniciar sesión."
     );
     openAuthModal();
     return false;
@@ -378,7 +378,9 @@ function renderThreads() {
     const btn = document.createElement("button");
     btn.className = "thread-item";
     btn.textContent = t.name || "Chat sin título";
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       switchThread(id);
     });
 
@@ -400,6 +402,7 @@ function renderThreads() {
     renameAction.className = "thread-menu-btn-action";
     renameAction.textContent = "Renombrar";
     renameAction.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       menuWrapper.classList.remove("open");
       renameThread(id);
@@ -410,6 +413,7 @@ function renderThreads() {
     deleteAction.className = "thread-menu-btn-action danger";
     deleteAction.textContent = "Borrar conversación";
     deleteAction.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       menuWrapper.classList.remove("open");
       deleteThread(id);
@@ -423,6 +427,7 @@ function renderThreads() {
 
     // Al hacer click en los tres puntos
     menuBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       const isOpen = menuWrapper.classList.contains("open");
       closeAllThreadMenus();
@@ -472,7 +477,7 @@ function createNewThread() {
   localStorage.setItem(CURRENT_KEY, id);
 
   clearChatUI();
-  push("oppi", "Nuevo chat creado. Contame qué querés imprimir 😊");
+  push("oppi", "Nuevo chat creado. Contame qué querés imprimir.");
 
   renderThreads();
 }
@@ -506,7 +511,7 @@ async function deleteThread(id) {
   if (!ensureLoggedIn()) return;
 
   const confirmed = confirm(
-    "¿Seguro que querés borrar esta conversación?\nSe va a eliminar también de la base de datos si existe."
+    "¿Seguro que querés borrar esta conversación? Se va a eliminar también de la base de datos si existe."
   );
   if (!confirmed) return;
 
@@ -544,10 +549,7 @@ async function deleteThread(id) {
       ensureFirstThread();
       clearChatUI();
       renderHistoryForThread(threadId);
-      push(
-        "oppi",
-        "Nuevo chat creado. Contame qué querés imprimir 😊"
-      );
+      push("oppi", "Nuevo chat creado. Contame qué querés imprimir.");
     }
   }
 
@@ -555,15 +557,26 @@ async function deleteThread(id) {
 }
 
 // Botón "Nuevo chat"
-newThreadBtn?.addEventListener("click", createNewThread);
+newThreadBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  createNewThread();
+});
 
 // Cerrar menús si clickeás en cualquier otra parte
 document.addEventListener("click", () => {
   closeAllThreadMenus();
 });
 
+// ────────────────────────────────────────────────────────────────
 // Render inicial de threads
+
 renderThreads();
+
+// Forzar que la lista de threads tenga scroll (por si falta en CSS)
+if (threadList) {
+  threadList.style.overflowY = "auto";
+}
 
 // ────────────────────────────────────────────────────────────────
 // Render de chat y utilidades
@@ -621,7 +634,7 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
   pre.textContent = iniText;
 
   const btnDl = document.createElement("button");
-  btnDl.textContent = "⬇️ Descargar .ini";
+  btnDl.textContent = "Descargar .ini";
   btnDl.className = "btn";
   btnDl.addEventListener("click", () => {
     const blob = new Blob([iniText], { type: "text/plain;charset=utf-8" });
@@ -693,7 +706,7 @@ resetBtn?.addEventListener("click", async () => {
       body: JSON.stringify({ threadId }),
     });
 
-    push("oppi", "Memoria reiniciada ✅");
+    push("oppi", "Memoria reiniciada.");
 
     // Al resetear, también limpiamos el historial corto de ese chat
     historyByThread[threadId] = [];
@@ -717,6 +730,7 @@ iniFile?.addEventListener("change", async () => {
   if (!file) return;
 
   push("user", `Importando perfil: ${file.name} ...`);
+  recordMessage("user", `Importando perfil: ${file.name} ...`);
   const fd = new FormData();
   fd.append("file", file);
   fd.append("threadId", threadId);
@@ -728,18 +742,21 @@ iniFile?.addEventListener("change", async () => {
     });
 
     if (data.ok) {
-      const msg = `Perfil importado ✅\n${data.summary || ""}`;
+      const msg = `Perfil importado.\n${data.summary || ""}`;
       push("oppi", toSimpleHtml(msg), { allowHtml: true });
       recordMessage("oppi", msg);
     } else {
-      push(
-        "oppi",
-        `No pude importar: ${data.error || "Error desconocido al importar"}`
-      );
+      const msg = `No pude importar: ${
+        data.error || "Error desconocido al importar"
+      }`;
+      push("oppi", msg);
+      recordMessage("oppi", msg);
     }
   } catch (err) {
     console.error("Error de red importando el .ini:", err);
-    push("oppi", `Error de red importando el .ini: ${err.message}`);
+    const msg = `Error de red importando el .ini: ${err.message}`;
+    push("oppi", msg);
+    recordMessage("oppi", msg);
   } finally {
     iniFile.value = "";
   }
@@ -767,10 +784,13 @@ generateBtn?.addEventListener("click", async () => {
 
     if (!data.ok) {
       const msgError = data?.error || "Error al generar el .ini";
-      return push("oppi", `No pude generar el .ini: ${msgError}`);
+      const msg = `No pude generar el .ini: ${msgError}`;
+      push("oppi", msg);
+      recordMessage("oppi", msg);
+      return;
     }
 
-    const msgText = "Perfil generado automáticamente ✅";
+    const msgText = "Perfil generado automáticamente.";
     const msgEl = push("oppi", msgText);
     recordMessage("oppi", msgText);
 
@@ -778,7 +798,9 @@ generateBtn?.addEventListener("click", async () => {
   } catch (err) {
     console.error("Error generando ini:", err);
     setTyping(false);
-    push("oppi", `Error de red generando el .ini: ${err.message}`);
+    const msg = `Error de red generando el .ini: ${err.message}`;
+    push("oppi", msg);
+    recordMessage("oppi", msg);
   }
 });
 
@@ -805,7 +827,7 @@ suggestStlBtn?.addEventListener("click", async () => {
     if (!data.ok || !data.model) {
       const msgText =
         data?.error ||
-        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir 😊";
+        "Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir.";
       push("oppi", msgText);
       recordMessage("oppi", msgText);
       return;
@@ -822,7 +844,7 @@ suggestStlBtn?.addEventListener("click", async () => {
       m.dificultad || "-"
     }<br>
       ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
-      <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">⬇️ Descargar STL</a>
+      <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">Descargar STL</a>
     `;
 
     push("oppi", html, { allowHtml: true });
@@ -847,12 +869,17 @@ suggestStlBtn?.addEventListener("click", async () => {
 window.addEventListener("load", () => {
   initAuthState();
 
+  // Asegurar que el contenedor de threads tenga scroll
+  if (threadList) {
+    threadList.style.overflowY = "auto";
+  }
+
   // Mostrar historial corto del thread actual (si existe)
   renderHistoryForThread(threadId);
 
   push(
     "oppi",
-    "¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",
+    "Hola, soy Oppi. Te acompaño en tu impresión 3D. Podés chatear, importar un .ini, generar uno nuevo automáticamente y pedir un modelo STL para probar.",
     { allowHtml: true }
   );
 });
