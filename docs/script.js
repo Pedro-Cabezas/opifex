@@ -1,14 +1,18 @@
-// Si lo dejás vacío usa mismo origen; en Pages poné la URL de Render
-// —— configuración de API (arriba del archivo)
-const API_BASE = "https://oppi-backend.onrender.com"; // en local podés dejar "" (cadena vacía)
+// ────────────────────────────────────────────────────────────────
+// Configuración de API
+// Si lo dejás vacío ("") usa el mismo origen que el frontend.
+// En GitHub Pages, poné acá la URL de tu backend en Render.
+const API_BASE = "https://oppi-backend.onrender.com";
+// const API_BASE = ""; // para usar mismo dominio en desarrollo/local
 
-// script.js
+// ────────────────────────────────────────────────────────────────
+// Supabase (Auth + helper para backend)
 import { createClient } from "https://esm.sh/@supabase/supabase-js";
 
 // 1) Cliente de Supabase (FRONTEND)
 const supabase = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
-// Lo dejo global por si querés usarlo en otros archivos
+// Lo dejo global por si querés usarlo en otros archivos / consola
 window.supabase = supabase;
 
 // 2) Helper para llamar a tu backend con el token de Supabase
@@ -29,7 +33,7 @@ async function callBackend(path, options = {}) {
 
   const token = session.access_token;
 
-  const res = await fetch(path, {
+  const res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       ...(options.headers || {}),
@@ -49,7 +53,7 @@ async function callBackend(path, options = {}) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Referencias DOM
+// Referencias DOM (chat + botones Oppi)
 const box = document.getElementById("chat-box");
 const form = document.getElementById("chat-form");
 const input = document.getElementById("user-input");
@@ -58,10 +62,13 @@ const importBtn = document.getElementById("import-btn");
 const iniFile = document.getElementById("ini-file");
 const generateBtn = document.getElementById("generate-ini-btn");
 const openIniFile = document.getElementById("open-ini-prusa-file");
-const openIniBtn  = document.getElementById("open-ini-prusa-btn");
+const openIniBtn = document.getElementById("open-ini-prusa-btn");
+
 // 🔹 NUEVO: botón para sugerir STL
 const suggestStlBtn = document.getElementById("suggest-stl-btn");
-// 3) Referencias a los elementos del DOM
+
+// ────────────────────────────────────────────────────────────────
+// Referencias DOM para autenticación (Supabase Auth)
 const registerEmail = document.getElementById("register-email");
 const registerPassword = document.getElementById("register-password");
 const registerBtn = document.getElementById("register-btn");
@@ -75,7 +82,8 @@ const loginStatus = document.getElementById("login-status");
 const btnVerCuenta = document.getElementById("btn-ver-cuenta");
 const meOutput = document.getElementById("me-output");
 
-// 4) Registro (signUp)
+// ────────────────────────────────────────────────────────────────
+// Registro (signUp)
 if (registerBtn) {
   registerBtn.addEventListener("click", async () => {
     registerStatus.textContent = "Creando cuenta...";
@@ -88,21 +96,19 @@ if (registerBtn) {
       return;
     }
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       registerStatus.textContent = "Error: " + error.message;
     } else {
-      registerStatus.textContent = "Cuenta creada. Revisá tu mail si pide confirmación.";
+      registerStatus.textContent =
+        "Cuenta creada. Revisá tu mail si pide confirmación.";
       console.log("SignUp:", data);
     }
   });
 }
 
-// 5) Login (signInWithPassword)
+// Login (signInWithPassword)
 if (loginBtn) {
   loginBtn.addEventListener("click", async () => {
     loginStatus.textContent = "Iniciando sesión...";
@@ -129,13 +135,13 @@ if (loginBtn) {
   });
 }
 
-// 6) Probar /api/me en tu backend
+// Debug: probar /api/me en tu backend
 if (btnVerCuenta) {
   btnVerCuenta.addEventListener("click", async () => {
     meOutput.textContent = "Consultando /api/me...";
 
     try {
-      const data = await callBackend("/api/me"); // O "https://TU-BACKEND.onrender.com/api/me"
+      const data = await callBackend("/api/me");
       meOutput.textContent = JSON.stringify(data, null, 2);
     } catch (err) {
       meOutput.textContent = "Error: " + err.message;
@@ -144,117 +150,143 @@ if (btnVerCuenta) {
   });
 }
 
-
-
+// ────────────────────────────────────────────────────────────────
 // Si el backend está remoto, ocultamos la tarjeta "Abrir en Prusa"
 if (typeof API_BASE === "string" && API_BASE) {
-  document.querySelectorAll('#open-ini-prusa-file, #open-ini-prusa-btn')
-    .forEach(el => el?.closest('.card')?.remove());
+  document
+    .querySelectorAll("#open-ini-prusa-file, #open-ini-prusa-btn")
+    .forEach((el) => el?.closest(".card")?.remove());
 }
 
-// Control de hilos / memoria
+// ────────────────────────────────────────────────────────────────
+// Control de hilos / memoria (threads de conversación)
 const THREADS_KEY = "oppi.threads";
 const CURRENT_KEY = "oppi.currentThread";
+
 function uuid() {
-  return crypto.randomUUID ? crypto.randomUUID() :
-    "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
-      const r = (Math.random()*16)|0, v = c==="x" ? r : (r&0x3)|0x8;
-      return v.toString(16);
-    });
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === "x" ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+      });
 }
-function loadThreads(){ try{return JSON.parse(localStorage.getItem(THREADS_KEY))||{};}catch{return{};} }
-function saveThreads(o){ localStorage.setItem(THREADS_KEY, JSON.stringify(o)); }
+
+function loadThreads() {
+  try {
+    return JSON.parse(localStorage.getItem(THREADS_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+function saveThreads(o) {
+  localStorage.setItem(THREADS_KEY, JSON.stringify(o));
+}
+
 let threads = loadThreads();
 let threadId = localStorage.getItem(CURRENT_KEY);
-function ensureFirstThread(){
-  if(!threadId){
-    const id=uuid();
-    threads[id]={name:"Conversación 1",created:Date.now()};
+
+function ensureFirstThread() {
+  if (!threadId) {
+    const id = uuid();
+    threads[id] = { name: "Conversación 1", created: Date.now() };
     saveThreads(threads);
-    localStorage.setItem(CURRENT_KEY,id);
-    threadId=id;
+    localStorage.setItem(CURRENT_KEY, id);
+    threadId = id;
   }
 }
 ensureFirstThread();
 
 // ────────────────────────────────────────────────────────────────
 // Render de chat y utilidades
-function push(who, text, {allowHtml=false}={}) {
-  const msg=document.createElement("div");
-  msg.className=`msg ${who}`;
-  msg[allowHtml?"innerHTML":"textContent"]=text;
+function push(who, text, { allowHtml = false } = {}) {
+  const msg = document.createElement("div");
+  msg.className = `msg ${who}`;
+  msg[allowHtml ? "innerHTML" : "textContent"] = text;
   box.appendChild(msg);
-  box.scrollTop=box.scrollHeight;
+  box.scrollTop = box.scrollHeight;
   return msg;
 }
-function setTyping(on=true){
-  const id="__typing__";
-  let el=document.getElementById(id);
-  if(on){
-    if(el)return;
-    el=document.createElement("div");
-    el.id=id; el.className="msg oppi";
-    el.textContent="Oppi está escribiendo…";
+
+function setTyping(on = true) {
+  const id = "__typing__";
+  let el = document.getElementById(id);
+  if (on) {
+    if (el) return;
+    el = document.createElement("div");
+    el.id = id;
+    el.className = "msg oppi";
+    el.textContent = "Oppi está escribiendo…";
     box.appendChild(el);
-  } else if(el) el.remove();
-  box.scrollTop=box.scrollHeight;
+  } else if (el) el.remove();
+  box.scrollTop = box.scrollHeight;
 }
-function toSimpleHtml(md){
-  const esc=s=>s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  let html=esc(md||"");
-  html=html.replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
-  html=html.replace(/`([^`]+?)`/g,"<code>$1</code>");
-  html=html.replace(/\n/g,"<br>");
+
+function toSimpleHtml(md) {
+  const esc = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  let html = esc(md || "");
+  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/`([^`]+?)`/g, "<code>$1</code>");
+  html = html.replace(/\n/g, "<br>");
   return html;
 }
-function extractIniBlock(text){
-  const re=/```(?:ini)?\s*([\s\S]*?)```/i;
-  const m=(text||"").match(re);
-  return m?m[1].trim():null;
+
+function extractIniBlock(text) {
+  const re = /```(?:ini)?\s*([\s\S]*?)```/i;
+  const m = (text || "").match(re);
+  return m ? m[1].trim() : null;
 }
 
 // Agregar botones a los .ini generados
-function attachIniActions(msgEl, iniText, filename="perfil-oppi.prusa.ini"){
-  const bar=document.createElement("div");
-  bar.style.marginTop="8px";
-  bar.style.display="flex";
-  bar.style.flexWrap="wrap";
-  bar.style.gap="8px";
-  const pre=document.createElement("pre");
-  pre.style.whiteSpace="pre-wrap";
-  pre.style.margin="8px 0";
-  pre.textContent=iniText;
+function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
+  const bar = document.createElement("div");
+  bar.style.marginTop = "8px";
+  bar.style.display = "flex";
+  bar.style.flexWrap = "wrap";
+  bar.style.gap = "8px";
 
-  const btnDl=document.createElement("button");
-  btnDl.textContent="⬇️ Descargar .ini";
-  btnDl.className="btn";
-  btnDl.addEventListener("click",()=>{
-    const blob=new Blob([iniText],{type:"text/plain;charset=utf-8"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=filename;
-    a.click(); URL.revokeObjectURL(url);
+  const pre = document.createElement("pre");
+  pre.style.whiteSpace = "pre-wrap";
+  pre.style.margin = "8px 0";
+  pre.textContent = iniText;
+
+  const btnDl = document.createElement("button");
+  btnDl.textContent = "⬇️ Descargar .ini";
+  btnDl.className = "btn";
+  btnDl.addEventListener("click", () => {
+    const blob = new Blob([iniText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   bar.appendChild(btnDl);
   msgEl.appendChild(bar);
   msgEl.appendChild(pre);
-  box.scrollTop=box.scrollHeight;
+  box.scrollTop = box.scrollHeight;
 }
 
 // ────────────────────────────────────────────────────────────────
-// Enviar mensaje al backend
-form.addEventListener("submit",async e=>{
+// Enviar mensaje al backend (chat principal)
+form?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const text=input.value.trim();
-  if(!text)return;
-  push("user",text);
-  input.value="";
+  const text = input.value.trim();
+  if (!text) return;
+
+  push("user", text);
+  input.value = "";
   setTyping(true);
-  try{
-    const r=await fetch(`${API_BASE}/chat-oppi`,{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({message:text,threadId})
+
+  try {
+    const r = await fetch(`${API_BASE}/chat-oppi`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, threadId }),
     });
 
     let data;
@@ -262,73 +294,83 @@ form.addEventListener("submit",async e=>{
       data = await r.json();
     } catch (e) {
       setTyping(false);
-      return push("oppi","El backend no devolvió JSON válido.");
+      return push("oppi", "El backend no devolvió JSON válido.");
     }
 
     setTyping(false);
 
     if (!r.ok) {
       const msgError = data?.error || `Error del servidor (${r.status})`;
-      return push("oppi",`No pude responder: ${msgError}`);
+      return push("oppi", `No pude responder: ${msgError}`);
     }
 
-    const reply=data.reply||"Hubo un problema al responder.";
-    const msgEl=push("oppi",toSimpleHtml(reply),{allowHtml:true});
-    const ini=extractIniBlock(reply);
-    if(ini)attachIniActions(msgEl,ini);
-  }catch(err){
+    const reply = data.reply || "Hubo un problema al responder.";
+    const msgEl = push("oppi", toSimpleHtml(reply), { allowHtml: true });
+    const ini = extractIniBlock(reply);
+    if (ini) attachIniActions(msgEl, ini);
+  } catch (err) {
     console.error("Error en chat-oppi:", err);
     setTyping(false);
-    push("oppi","Error de red. Probá de nuevo.");
+    push("oppi", "Error de red. Probá de nuevo.");
   }
 });
 
-
 // ────────────────────────────────────────────────────────────────
 // Reset de conversación
-resetBtn?.addEventListener("click",async()=>{
-  try{
-    await fetch(`${API_BASE}/reset-thread`,{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({threadId})
+resetBtn?.addEventListener("click", async () => {
+  try {
+    await fetch(`${API_BASE}/reset-thread`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadId }),
     });
-    push("oppi","Memoria reiniciada ✅");
-  }catch{
-    push("oppi","Error al reiniciar memoria.");
+    push("oppi", "Memoria reiniciada ✅");
+  } catch {
+    push("oppi", "Error al reiniciar memoria.");
   }
 });
 
 // ────────────────────────────────────────────────────────────────
 // Importar perfil .ini (contexto)
-importBtn?.addEventListener("click",()=>iniFile?.click());
-iniFile?.addEventListener("change",async()=>{
-  const file=iniFile.files?.[0];
-  if(!file)return;
-  push("user",`Importando perfil: ${file.name} ...`);
-  const fd=new FormData();
-  fd.append("file",file);
-  fd.append("threadId",threadId);
-  try{
-    const r=await fetch(`${API_BASE}/import-ini`,{method:"POST",body:fd});
-    const data=await r.json();
-    if(data.ok)
-      push("oppi",toSimpleHtml(`Perfil importado ✅<br>${data.summary}`),{allowHtml:true});
-    else
-      push("oppi",`No pude importar: ${data.error}`);
-  }catch{
-    push("oppi","Error de red importando el .ini.");
-  }finally{ iniFile.value=""; }
+importBtn?.addEventListener("click", () => iniFile?.click());
+
+iniFile?.addEventListener("change", async () => {
+  const file = iniFile.files?.[0];
+  if (!file) return;
+
+  push("user", `Importando perfil: ${file.name} ...`);
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("threadId", threadId);
+
+  try {
+    const r = await fetch(`${API_BASE}/import-ini`, { method: "POST", body: fd });
+    const data = await r.json();
+    if (data.ok)
+      push(
+        "oppi",
+        toSimpleHtml(`Perfil importado ✅<br>${data.summary}`),
+        { allowHtml: true }
+      );
+    else push("oppi", `No pude importar: ${data.error}`);
+  } catch {
+    push("oppi", "Error de red importando el .ini.");
+  } finally {
+    iniFile.value = "";
+  }
 });
 
 // ────────────────────────────────────────────────────────────────
 // Generar .ini automático con Oppi
-generateBtn?.addEventListener("click",async()=>{
-  push("user","(Generar .ini con Oppi)");
+generateBtn?.addEventListener("click", async () => {
+  push("user", "(Generar .ini con Oppi)");
   setTyping(true);
-  try{
-    const r=await fetch(`${API_BASE}/generate-ini-ai`,{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({threadId})
+
+  try {
+    const r = await fetch(`${API_BASE}/generate-ini-ai`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ threadId }),
     });
 
     let data;
@@ -336,30 +378,31 @@ generateBtn?.addEventListener("click",async()=>{
       data = await r.json();
     } catch (e) {
       setTyping(false);
-      return push("oppi","El backend no devolvió JSON válido al generar el .ini.");
+      return push(
+        "oppi",
+        "El backend no devolvió JSON válido al generar el .ini."
+      );
     }
 
     setTyping(false);
 
     if (!r.ok || !data.ok) {
       const msgError = data?.error || `Error del servidor (${r.status})`;
-      return push("oppi",`No pude generar el .ini: ${msgError}`);
+      return push("oppi", `No pude generar el .ini: ${msgError}`);
     }
 
-    const msgEl=push("oppi","Perfil generado automáticamente ✅");
-    attachIniActions(msgEl,data.iniText);
-  }catch(err){
+    const msgEl = push("oppi", "Perfil generado automáticamente ✅");
+    attachIniActions(msgEl, data.iniText);
+  } catch (err) {
     console.error("Error generando ini:", err);
     setTyping(false);
-    push("oppi","Error de red generando el .ini.");
+    push("oppi", "Error de red generando el .ini.");
   }
 });
-
 
 // ────────────────────────────────────────────────────────────────
 // 🔹 Sugerir modelo STL con Oppi (IA + historial de chat)
 suggestStlBtn?.addEventListener("click", async () => {
-  // Mostramos una acción similar a la de generar .ini
   push("user", "(Pedir modelo STL a Oppi)");
   setTyping(true);
 
@@ -367,7 +410,7 @@ suggestStlBtn?.addEventListener("click", async () => {
     const r = await fetch(`${API_BASE}/api/stl/suggest-ai`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ threadId })
+      body: JSON.stringify({ threadId }),
     });
 
     const data = await r.json();
@@ -387,13 +430,18 @@ suggestStlBtn?.addEventListener("click", async () => {
       Te recomiendo este modelo STL basado en lo que estuvimos hablando:<br>
       <strong>${m.nombre}</strong><br>
       ${m.descripcion || ""}<br>
-      <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${m.dificultad || "-"}<br>
-      ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
+      <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${
+        m.dificultad || "-"
+      }<br>
+      ${
+        motivo
+          ? `<em>Motivo:</em> ${motivo}<br>`
+          : ""
+      }
       <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">⬇️ Descargar STL</a>
     `;
 
     push("oppi", html, { allowHtml: true });
-
   } catch (err) {
     console.error("Error al sugerir STL con IA:", err);
     setTyping(false);
@@ -401,21 +449,13 @@ suggestStlBtn?.addEventListener("click", async () => {
   }
 });
 
-
 // ────────────────────────────────────────────────────────────────
 // Saludo inicial
-window.addEventListener("load",()=>{
-  push("oppi","¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",{allowHtml:true});
+window.addEventListener("load", () => {
+  push(
+    "oppi",
+    "¡Hola! Soy Oppi 🤖. Te acompaño en tu impresión 3D.<br>Podés chatear, importar un .ini, generar uno nuevo automáticamente y ahora también pedir un modelo STL para probar.",
+    { allowHtml: true }
+  );
 });
-
-
-
-
-
-
-
-
-
-
-
 
