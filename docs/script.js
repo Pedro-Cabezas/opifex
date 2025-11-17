@@ -606,20 +606,12 @@ form?.addEventListener("submit", async (e) => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/chat-oppi`, {
+    const data = await callBackend("/chat-oppi", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: text, threadId }),
     });
 
-    const data = await r.json().catch(() => ({}));
     setTyping(false);
-
-    if (!r.ok) {
-      const msg = data.error || `Error del servidor (${r.status})`;
-      push("oppi", `No pude responder: ${msg}`);
-      return;
-    }
 
     const reply = data.reply || "Hubo un problema al responder.";
     recordMessage("oppi", reply);
@@ -634,16 +626,15 @@ form?.addEventListener("submit", async (e) => {
   }
 });
 
+
 resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
   try {
-    const r = await fetch(`${API_BASE}/reset-thread`, {
+    await callBackend("/reset-thread", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
-    await r.json().catch(() => ({}));
     push("oppi", "Memoria reiniciada.");
     historyByThread[threadId] = [];
     saveHistory(historyByThread);
@@ -653,6 +644,7 @@ resetBtn?.addEventListener("click", async () => {
   }
 });
 
+
 importBtn?.addEventListener("click", () => {
   if (!ensureLoggedIn()) return;
   iniFile?.click();
@@ -661,6 +653,7 @@ importBtn?.addEventListener("click", () => {
 iniFile?.addEventListener("change", async () => {
   const file = iniFile.files?.[0];
   if (!file) return;
+  if (!ensureLoggedIn()) return;
 
   const msgUser = `Importando perfil: ${file.name} ...`;
   push("user", msgUser);
@@ -671,16 +664,13 @@ iniFile?.addEventListener("change", async () => {
   fd.append("threadId", threadId);
 
   try {
-    const r = await fetch(`${API_BASE}/import-ini`, {
+    const data = await callBackend("/import-ini", {
       method: "POST",
       body: fd,
     });
-    const data = await r.json().catch(() => ({}));
 
-    if (!r.ok || !data.ok) {
-      const msg = `No pude importar: ${
-        data.error || `Error del servidor (${r.status})`
-      }`;
+    if (!data.ok) {
+      const msg = `No pude importar: ${data.error || "Error desconocido"}`;
       push("oppi", msg);
       recordMessage("oppi", msg);
       return;
@@ -699,6 +689,7 @@ iniFile?.addEventListener("change", async () => {
   }
 });
 
+
 generateBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -708,16 +699,14 @@ generateBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/generate-ini-ai`, {
+    const data = await callBackend("/generate-ini-ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
-    const data = await r.json().catch(() => ({}));
     setTyping(false);
 
-    if (!r.ok || !data.ok) {
-      const msgError = data.error || `Error del servidor (${r.status})`;
+    if (!data.ok) {
+      const msgError = data.error || "Error desconocido";
       const msg = `No pude generar el .ini: ${msgError}`;
       push("oppi", msg);
       recordMessage("oppi", msg);
@@ -737,6 +726,7 @@ generateBtn?.addEventListener("click", async () => {
   }
 });
 
+
 suggestStlBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -746,15 +736,13 @@ suggestStlBtn?.addEventListener("click", async () => {
   setTyping(true);
 
   try {
-    const r = await fetch(`${API_BASE}/api/stl/suggest-ai`, {
+    const data = await callBackend("/api/stl/suggest-ai", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ threadId }),
     });
-    const data = await r.json().catch(() => ({}));
     setTyping(false);
 
-    if (!r.ok || !data.ok || !data.model) {
+    if (!data.ok || !data.model) {
       const msgText =
         data.error ||
         `Por ahora no pude elegir un modelo STL a partir de lo que hablamos. Probá contarme mejor qué querés imprimir.`;
@@ -762,6 +750,36 @@ suggestStlBtn?.addEventListener("click", async () => {
       recordMessage("oppi", msgText);
       return;
     }
+
+    const m = data.model;
+    const motivo = data.motivo;
+
+    const html = `
+      Te recomiendo este modelo STL basado en lo que estuvimos hablando:<br>
+      <strong>${m.nombre}</strong><br>
+      ${m.descripcion || ""}<br>
+      <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${
+      m.dificultad || "-"
+    }<br>
+      ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
+      <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">Descargar STL</a>
+    `;
+
+    push("oppi", html, { allowHtml: true });
+
+    const resumenPlano = `STL sugerido: ${m.nombre} (${m.categoria || "-"})${
+      motivo ? ". Motivo: " + motivo : ""
+    }`;
+    recordMessage("oppi", resumenPlano);
+  } catch (err) {
+    console.error("Error al sugerir STL:", err);
+    setTyping(false);
+    const msgText = "Tuvimos un problema al buscar el STL. Probá de nuevo.";
+    push("oppi", msgText);
+    recordMessage("oppi", msgText);
+  }
+});
+
 
     const m = data.model;
     const motivo = data.motivo;
@@ -812,3 +830,4 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
+
