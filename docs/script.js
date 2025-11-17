@@ -194,7 +194,9 @@ if (loginBtn) {
   });
 }
 
-// Debug /api/me (usa token, pero no afecta al resto si falla)
+// ────────────────────────────────────────────────────────────────
+// Helper genérico para llamar al backend con token
+
 async function callBackend(path, options = {}) {
   const {
     data: { session },
@@ -221,6 +223,7 @@ async function callBackend(path, options = {}) {
   return body;
 }
 
+// Debug /api/me
 if (btnVerCuenta) {
   btnVerCuenta.addEventListener("click", async () => {
     meOutput.textContent = "Consultando /api/me...";
@@ -469,7 +472,7 @@ async function renameThread(id) {
   saveThreads(threads);
   renderThreads();
 
-  // si más adelante tenés endpoint /api/threads/rename, se puede llamar acá
+  // más adelante podés llamar /api/threads/rename si querés sincronizar con backend
 }
 
 async function deleteThread(id) {
@@ -591,7 +594,7 @@ function attachIniActions(msgEl, iniText, filename = "perfil-oppi.prusa.ini") {
 }
 
 // ────────────────────────────────────────────────────────────────
-// Eventos principales (TODOS con fetch directo)
+// Eventos principales (todos usan callBackend)
 
 form?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -626,7 +629,6 @@ form?.addEventListener("submit", async (e) => {
   }
 });
 
-
 resetBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -643,7 +645,6 @@ resetBtn?.addEventListener("click", async () => {
     push("oppi", `Error al reiniciar memoria: ${err.message}`);
   }
 });
-
 
 importBtn?.addEventListener("click", () => {
   if (!ensureLoggedIn()) return;
@@ -689,7 +690,6 @@ iniFile?.addEventListener("change", async () => {
   }
 });
 
-
 generateBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
 
@@ -725,7 +725,6 @@ generateBtn?.addEventListener("click", async () => {
     recordMessage("oppi", msg);
   }
 });
-
 
 suggestStlBtn?.addEventListener("click", async () => {
   if (!ensureLoggedIn()) return;
@@ -780,36 +779,6 @@ suggestStlBtn?.addEventListener("click", async () => {
   }
 });
 
-
-    const m = data.model;
-    const motivo = data.motivo;
-
-    const html = `
-      Te recomiendo este modelo STL basado en lo que estuvimos hablando:<br>
-      <strong>${m.nombre}</strong><br>
-      ${m.descripcion || ""}<br>
-      <em>Categoría:</em> ${m.categoria || "-"} – <em>Dificultad:</em> ${
-      m.dificultad || "-"
-    }<br>
-      ${motivo ? `<em>Motivo:</em> ${motivo}<br>` : ""}
-      <a href="${m.archivo}" target="_blank" rel="noopener noreferrer">Descargar STL</a>
-    `;
-
-    push("oppi", html, { allowHtml: true });
-
-    const resumenPlano = `STL sugerido: ${m.nombre} (${m.categoria || "-"})${
-      motivo ? ". Motivo: " + motivo : ""
-    }`;
-    recordMessage("oppi", resumenPlano);
-  } catch (err) {
-    console.error("Error al sugerir STL:", err);
-    setTyping(false);
-    const msgText = "Tuvimos un problema al buscar el STL. Probá de nuevo.";
-    push("oppi", msgText);
-    recordMessage("oppi", msgText);
-  }
-});
-
 // ────────────────────────────────────────────────────────────────
 // Saludo inicial
 
@@ -830,4 +799,3 @@ window.addEventListener("load", () => {
     { allowHtml: true }
   );
 });
-
