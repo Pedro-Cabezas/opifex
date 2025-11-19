@@ -58,7 +58,7 @@ body {
   font-size: 1rem;
   line-height: 1.6;
   font-weight: var(--font-weight-normal);
-  overflow: auto;
+  overflow: hidden;
   transition: background-color 0.4s ease, color 0.4s ease, background 0.6s ease;
 }
 
@@ -109,6 +109,7 @@ input { font-size: 1rem; }
 
 .app {
   min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 340px;
   background: transparent;
