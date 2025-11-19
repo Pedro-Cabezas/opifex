@@ -109,6 +109,7 @@ input { font-size: 1rem; }
 
 .app {
   min-height: 100vh;
+  max-height: 101vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 340px;
   background: transparent;
