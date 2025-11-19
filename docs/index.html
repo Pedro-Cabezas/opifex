@@ -2,29 +2,47 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <title>Oppi — Asistente de Impresión 3D</title>
+  <title>Oppi — Asistente de Impresión 3D!</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="style.css" rel="stylesheet" />
 </head>
 <body>
   <div class="app">
-
+    
     <!-- IZQUIERDA: lista de conversaciones -->
     <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>Conversaciones</h2>
-        <button id="new-thread" class="btn sm">+ Nueva</button>
-      </div>
-      <ul id="thread-list" class="thread-list"></ul>
-      <div class="sidebar-actions">
-        <button id="rename-thread" class="btn ghost sm">Renombrar</button>
-        <button id="delete-thread" class="btn danger sm">Eliminar</button>
-      </div>
+      <button id="auth-open-btn" class="btn btn-primary">
+        Iniciar sesión / Registrarse
+      </button>
+      <div id="auth-user-info" class="auth-user-info hidden">
+  <span id="auth-user-label"></span>
+  <button id="auth-logout-btn" class="btn-secundario">Cerrar sesión</button>
+</div>
+
+
+      <div class="layout">
+  <aside class="chat-sidebar">
+    <div class="threads-header">
+      <span>Mis chats</span>
+      <button id="new-thread-btn">+ Nuevo chat</button>
+    </div>
+    <div id="thread-list"></div>
+  </aside>
+
+  <!-- Tu área de chat existente -->
+  <main class="chat-main">
+    <!-- acá ya tenés chat-box, formulario, etc. -->
+  </main>
+</div>
+
+
     </aside>
 
     <!-- CENTRO: chat -->
     <main class="chat-col">
-      <header class="topbar">Oppi - Tu asistente en impresion 3D</header>
+      <header class="topbar">
+        <span class="topbar-title">Oppi - Tu asistente en impresion 3D</span>
+      </header>
       <section id="chat-box" class="chat-box"></section>
       <form id="chat-form" class="composer">
         <input id="user-input" placeholder="Contame tu pieza, material, impresora, problema…" autocomplete="off" />
@@ -53,11 +71,61 @@
         </div>
         <p class="hint">Más adelante sumamos los STL.</p>
       </div>
+
+      <div class="card">
+        <h3>Sugerir modelo STL con Oppi</h3>
+        <p>Oppi te da un<em>modelo 3D</em> según lo charlado en el chat.</p>
+        <button id="suggest-stl-btn" class="btn">Sugerir modelo STL con Oppi</button>
+        <p class="hint">Luego podrás descargarlo o abrirlo directo en PrusaSlicer.</p>
+      </div>
+</div>
     </aside>
 
   </div>
-  <script src="script.js"></script>
+  <script src="config.js"></script>
+  <script type="module" src="script.js"></script>
+
+  <!-- Ventana emergente de autenticación -->
+<div id="auth-modal" class="auth-modal">
+  <div class="auth-modal-content">
+    <button id="auth-close-btn" class="auth-close">&times;</button>
+    <h2>Ingresar a Oppi</h2>
+
+    <div class="auth-section">
+      <h3>Crear cuenta</h3>
+      <input id="register-email" type="email" placeholder="Email" />
+      <input id="register-password" type="password" placeholder="Contraseña" />
+      <button id="register-btn">Registrarse</button>
+      <p id="register-status"></p>
+    </div>
+
+    <div class="auth-section">
+      <h3>Iniciar sesión</h3>
+      <input id="login-email" type="email" placeholder="Email" />
+      <input id="login-password" type="password" placeholder="Contraseña" />
+      <button id="login-btn">Entrar</button>
+      <p id="login-status"></p>
+    </div>
+
+    <button id="btn-ver-cuenta">Ver mis datos (debug)</button>
+    <pre id="me-output"></pre>
+  </div>
+</div>
+
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
