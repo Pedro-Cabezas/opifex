@@ -109,7 +109,7 @@ input { font-size: 1rem; }
 
 .app {
   min-height: 100vh;
-  max-height: 100vh;
+  max-height: 101vh;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 340px;
   background: transparent;
@@ -190,8 +190,6 @@ input { font-size: 1rem; }
   background: linear-gradient(180deg, color-mix(in srgb, var(--card) 50%, #0a0f1f), var(--background));
   color: inherit;
   min-height: 0;
-  height: calc(100vh - 40px);
-  max-height: calc(100vh - 40px);
   border-radius: calc(var(--radius) + 0.75rem);
   border: 1px solid color-mix(in srgb, var(--border) 70%, rgba(255, 255, 255, 0.08));
   box-shadow: 0 20px 32px rgba(0, 0, 0, 0.28);
